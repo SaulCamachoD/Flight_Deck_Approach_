@@ -7,9 +7,12 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/PlayerController.h"
+#include "UILSComponent.h"
 #include "Engine/Engine.h"
+#include "DrawDebugHelpers.h"
 
 // Sets default values
 AAAircraftPaw::AAAircraftPaw()
@@ -20,11 +23,11 @@ AAAircraftPaw::AAAircraftPaw()
     USceneComponent* Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
     SetRootComponent(Root);
 
-    AirframeMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AirframeMesh"));
+    AirframeMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("AirframeMesh"));
     AirframeMesh->SetupAttachment(Root);
     AirframeMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     AirframeMesh->SetCollisionResponseToAllChannels(ECR_Block);
-
+    
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(Root);        // ← al Root, no al mesh
     SpringArm->TargetArmLength = 1200.f;
@@ -35,7 +38,8 @@ AAAircraftPaw::AAAircraftPaw()
 
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm);
-
+    
+    ILS = CreateDefaultSubobject<UUILSComponent>(TEXT("ILS"));
     AutoPossessPlayer = EAutoReceiveInput::Player0; 
 
 }
@@ -126,13 +130,36 @@ void AAAircraftPaw::ApplyFlightForces(float DeltaTime)
     // Integración semi-implícita: primero velocidad, luego posición
     Velocity += AccelMS2 * DeltaTime * 100.f; // de vuelta a cm/s
 
-    FHitResult Hit;
-    AddActorWorldOffset(Velocity * DeltaTime, true, &Hit);
-    if (Hit.IsValidBlockingHit())
+    const FVector Start = GetActorLocation();
+    const FVector Delta = Velocity * DeltaTime;
+    const FVector End = Start + Delta;
+
+    FHitResult GroundHit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 0.f, 0, 2.f);
+
+    if (GetWorld()->LineTraceSingleByChannel(GroundHit, Start, End, ECC_WorldStatic, Params))
     {
-        // El LandingScorer se suscribe a esto (ver Fase 3)
-        //OnGroundContact(Hit);
+        const FVector GearOffset = Start - GetActorLocation();
+        SetActorLocation(GroundHit.Location - GearOffset);
+
+        if (!bOnGround)
+        {
+            const float TouchdownVS = GetVerticalSpeedFPM();
+            UE_LOG(LogTemp, Warning, TEXT("TOUCHDOWN — VS: %.0f fpm | Roll: %.1f | IAS: %.0f kt"),
+                TouchdownVS, GetRollDeg(), GetAirspeedKnots());
+            bOnGround = true;
+        }
+
+        // Anula solo la componente vertical: sigues rodando hacia adelante
+        Velocity.Z = 0.f;
+        return;
     }
+
+    bOnGround = false;
+    AddActorWorldOffset(Delta, false);
     
     
 }
@@ -148,6 +175,31 @@ void AAAircraftPaw::ApplyRotationInput(float DeltaTime)
     const float RollDeg = GetActorRotation().Roll;
     const float YawRate = FMath::Sin(FMath::DegreesToRadians(RollDeg)) * YawRateDeg;
     AddActorWorldRotation(FRotator(0.f, YawRate * DeltaTime, 0.f));
+}
+
+void AAAircraftPaw::ApplyGroundRoll(float DeltaTime)
+{
+    // Nivelar la actitud: el avión se asienta sobre el tren
+    FRotator R = GetActorRotation();
+    R.Pitch = FMath::FInterpTo(R.Pitch, 0.f, DeltaTime, 3.f);
+    R.Roll  = FMath::FInterpTo(R.Roll,  0.f, DeltaTime, 3.f);
+    SetActorRotation(R);
+
+    // Fricción de rodadura + frenos (usamos el throttle bajo como freno)
+    const float DecelMS2 = RollingFrictionMS2 + BrakeDecelMS2 * (1.f - Throttle);
+    const float SpeedCMS = Velocity.Size();
+    const float NewSpeed = FMath::Max(0.f, SpeedCMS - DecelMS2 * 100.f * DeltaTime);
+
+    Velocity = (SpeedCMS > 1.f) ? Velocity.GetSafeNormal() * NewSpeed : FVector::ZeroVector;
+
+    // Rodar en línea recta siguiendo el morro
+    if (NewSpeed > 1.f)
+    {
+        FVector Dir = GetActorForwardVector();
+        Dir.Z = 0.f;
+        Velocity = Dir.GetSafeNormal() * NewSpeed;
+        AddActorWorldOffset(Velocity * DeltaTime, false);
+    }
 }
 
 void AAAircraftPaw::OnPitch(const FInputActionValue& Value)
@@ -171,8 +223,15 @@ void AAAircraftPaw::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
     
     Throttle = FMath::FInterpConstantTo(Throttle, ThrottleTarget, DeltaTime, ThrottleResponse);
-    ApplyRotationInput(DeltaTime);
-    ApplyFlightForces(DeltaTime);
+    if (bOnGround)
+    {
+        ApplyGroundRoll(DeltaTime);
+    }
+    else
+    {
+        ApplyRotationInput(DeltaTime);
+        ApplyFlightForces(DeltaTime);
+    }
     
     if (GEngine)
     {
@@ -193,6 +252,23 @@ void AAAircraftPaw::Tick(float DeltaTime)
                 DebugThrustN, DebugDragN,
                 DebugQ, DebugCL, DebugSinAoA, DebugSpeed,                          
                 PitchInput, RollInput));
+    }
+    
+    if (ILS && ILS->IsSignalValid())
+    {
+        const float Loc = ILS->GetLocalizerDeviationDeg();
+        const float GS  = ILS->GetGlideslopeDeviationDeg();
+
+        GEngine->AddOnScreenDebugMessage(2, 0.f, FColor::Yellow,
+            FString::Printf(TEXT(
+                "ILS  DME: %.2f NM\n"
+                "LOC: %+.2f deg (%s)  [aguja %+.2f]\n"
+                "GS:  %+.2f deg (%s)  [aguja %+.2f]"),
+                ILS->GetDistanceNM(),
+                Loc, Loc > 0 ? TEXT("estas a la IZQ, corrige der") : TEXT("estas a la DER, corrige izq"),
+                ILS->GetLocalizerNormalized(),
+                GS, GS > 0 ? TEXT("ALTO, baja") : TEXT("BAJO, sube"),
+                ILS->GetGlideslopeNormalized()));
     }
 
 }

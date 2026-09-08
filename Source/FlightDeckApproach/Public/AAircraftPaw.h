@@ -12,7 +12,8 @@ class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
-//class UILSComponent;
+class USkeletalMeshComponent;
+class UUILSComponent;
 
 UCLASS()
 class FLIGHTDECKAPPROACH_API AAAircraftPaw : public APawn
@@ -39,10 +40,10 @@ protected:
 	virtual void BeginPlay() override;
 	
 	// --- Componentes ---
-	UPROPERTY(VisibleAnywhere) UStaticMeshComponent* AirframeMesh;
 	UPROPERTY(VisibleAnywhere) USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere) UCameraComponent* Camera;
-	//UPROPERTY(VisibleAnywhere) UILSComponent* ILS;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aircraft") TObjectPtr<USkeletalMeshComponent> AirframeMesh;
+	UPROPERTY(VisibleAnywhere) UUILSComponent* ILS;
 
 	// --- Parámetros de tuning (EditAnywhere para iterar sin recompilar) ---
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float MaxThrustN = 60000.f;
@@ -62,7 +63,10 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* RollAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* ThrottleAction;
 
+	bool bOnGround = false;
 
+	UPROPERTY(EditAnywhere, Category="Flight|Ground") float BrakeDecelMS2 = 4.f;
+	UPROPERTY(EditAnywhere, Category="Flight|Ground") float RollingFrictionMS2 = 0.8f;
 
 public:	
 	// Estado
@@ -73,6 +77,7 @@ public:
 
 	void ApplyFlightForces(float DeltaTime);
 	void ApplyRotationInput(float DeltaTime);
+	void ApplyGroundRoll(float DeltaTime);
 
 	// Input handlers
 	void OnPitch(const FInputActionValue& Value);
