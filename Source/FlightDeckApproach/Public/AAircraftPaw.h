@@ -1,10 +1,30 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #pragma once
-
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "AAircraftPaw.generated.h"
+
+UENUM(BlueprintType)
+enum class ECrashReason : uint8
+{	
+	OffRunway,
+	HardLanding,
+	ExcessiveBank,
+	NoseFirst,
+	RunwayExcursion,
+	Collision	
+};
+
+
+UENUM(BlueprintType)
+enum class EAircraftState : uint8
+{
+	Airborne,
+	Rolling,
+	Stopped,
+	Crashed
+};
 
 class UStaticMeshComponent;
 class USpringArmComponent;
@@ -33,6 +53,9 @@ public:
 	UFUNCTION(BlueprintPure) float GetRollDeg() const { return GetActorRotation().Roll; };
 	UFUNCTION(BlueprintPure) float GetAltitudeFeet() const;
 	UFUNCTION(BlueprintPure) float GetThrottle() const { return Throttle; }
+	//Flight State
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Flight|State")
+	EAircraftState State = EAircraftState::Airborne;
 
 
 protected:
@@ -44,29 +67,40 @@ protected:
 	UPROPERTY(VisibleAnywhere) UCameraComponent* Camera;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aircraft") TObjectPtr<USkeletalMeshComponent> AirframeMesh;
 	UPROPERTY(VisibleAnywhere) UUILSComponent* ILS;
+	UPROPERTY(VisibleAnywhere, Category="Aircraft") USceneComponent* MainGearContact;
 
 	// --- Parámetros de tuning (EditAnywhere para iterar sin recompilar) ---
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float MaxThrustN = 60000.f;
-	UPROPERTY(EditAnywhere, Category="Flight|Forces") float LiftCoefficient = 1.2f;
+	UPROPERTY(EditAnywhere, Category="Flight|Forces") float LiftCoefficient = 1.5f;
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float DragCoefficient = 0.025f;
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float InducedDragFactor = 0.08f;
-	UPROPERTY(EditAnywhere, Category="Flight|Forces") float WingAreaM2 = 25.f;
-	UPROPERTY(EditAnywhere, Category="Flight|Forces") float MassKg = 5000.f;
+	UPROPERTY(EditAnywhere, Category="Flight|Forces") float WingAreaM2 = 50.f;
+	UPROPERTY(EditAnywhere, Category="Flight|Forces") float MassKg = 2000.f;
 
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float PitchRateDeg = 25.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float RollRateDeg = 60.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float YawRateDeg = 10.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float ThrottleResponse = 0.5f;
-	
+	UPROPERTY(EditAnywhere, Category="Flight|Handling") float ThrottleRatePerSec = 1.2f;
+	UPROPERTY(EditAnywhere, Category="Debug") bool bDrawDebug = false;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputMappingContext* FlightMappingContext;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* PitchAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* RollAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* ThrottleAction;
 
-	bool bOnGround = false;
-
 	UPROPERTY(EditAnywhere, Category="Flight|Ground") float BrakeDecelMS2 = 4.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Ground") float RollingFrictionMS2 = 0.8f;
+	
+	// --- Límites de aterrizaje ---
+	UPROPERTY(EditAnywhere, Category="Flight|Landing") FName RunwayTag = TEXT("Runway");
+	UPROPERTY(EditAnywhere, Category="Flight|Landing") float MaxTouchdownSinkFPM = 1000.f;
+	UPROPERTY(EditAnywhere, Category="Flight|Landing") float MaxTouchdownBankDeg = 10.f;
+	UPROPERTY(EditAnywhere, Category="Flight|Landing") float MinTouchdownPitchDeg = -2.f;
+
+	bool IsRunway(const FHitResult& Hit) const;
+	void HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset);
+	void Crash(ECrashReason Reason);
+	void CheckStillOnRunway();
 
 public:	
 	// Estado

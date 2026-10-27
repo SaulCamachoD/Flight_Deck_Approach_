@@ -35,11 +35,14 @@ AAAircraftPaw::AAAircraftPaw()
     SpringArm->bEnableCameraLag = true;
     SpringArm->CameraLagSpeed = 8.f;
     SpringArm->bInheritRoll = false;
+    SpringArm->bDoCollisionTest = false;
 
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm);
     
     ILS = CreateDefaultSubobject<UUILSComponent>(TEXT("ILS"));
+    MainGearContact = CreateDefaultSubobject<USceneComponent>(TEXT("MainGearContact"));
+    MainGearContact->SetupAttachment(Root);
     AutoPossessPlayer = EAutoReceiveInput::Player0; 
 
 }
@@ -66,6 +69,65 @@ void AAAircraftPaw::BeginPlay()
 	
 }
 
+bool AAAircraftPaw::IsRunway(const FHitResult& Hit) const
+{
+    const AActor* HitActor = Hit.GetActor();
+    const UPrimitiveComponent* HitComp = Hit.GetComponent();
+    return (HitActor && HitActor->ActorHasTag(RunwayTag))
+        || (HitComp && HitComp->ComponentHasTag(RunwayTag));
+}
+
+void AAAircraftPaw::HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset)
+{
+    SetActorLocation(Hit.Location - GearOffset);
+
+    const float VS    = GetVerticalSpeedFPM();
+    const float Roll  = GetRollDeg();
+    const float Pitch = GetPitchDeg();
+
+    UE_LOG(LogTemp, Warning, TEXT("TOUCHDOWN — VS: %.0f fpm | Roll: %.1f | Pitch: %.1f | IAS: %.0f kt"),
+        VS, Roll, Pitch, GetAirspeedKnots());
+
+    if (!IsRunway(Hit))                          { Crash(ECrashReason::OffRunway);     return; }
+    if (-VS > MaxTouchdownSinkFPM)               { Crash(ECrashReason::HardLanding);   return; }
+    if (FMath::Abs(Roll) > MaxTouchdownBankDeg)  { Crash(ECrashReason::ExcessiveBank); return; }
+    if (Pitch < MinTouchdownPitchDeg)            { Crash(ECrashReason::NoseFirst);     return; }
+
+    // Aterrizaje válido
+    Velocity.Z = 0.f;
+    State = EAircraftState::Rolling;
+}
+
+void AAAircraftPaw::Crash(ECrashReason Reason)
+{
+    if (State == EAircraftState::Crashed) return;
+
+    State = EAircraftState::Crashed;
+    Velocity = FVector::ZeroVector;
+    Throttle = ThrottleTarget = 0.f;
+
+    UE_LOG(LogTemp, Error, TEXT("CRASH — %s"), *UEnum::GetValueAsString(Reason));
+
+}
+
+void AAAircraftPaw::CheckStillOnRunway()
+{
+    // Trace corto hacia abajo desde el tren: si ya no hay pista debajo, se salió
+    const FVector Start = MainGearContact->GetComponentLocation() + FVector(0.f, 0.f, 50.f);
+    const FVector End   = Start - FVector(0.f, 0.f, 300.f);
+
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    FHitResult Hit;
+    const bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_WorldStatic, Params);
+
+    if (!bHit || !IsRunway(Hit))
+    {
+        Crash(ECrashReason::RunwayExcursion);
+    }
+}
+
 void AAAircraftPaw::ApplyFlightForces(float DeltaTime)
 {
 	const FVector Fwd = GetActorForwardVector();
@@ -81,8 +143,8 @@ void AAAircraftPaw::ApplyFlightForces(float DeltaTime)
     if (Speed > 1.f)
     {
         const FVector VelDir = VelMS.GetSafeNormal();
-        const float SinAoA = FVector::DotProduct(FVector::CrossProduct(VelDir, Fwd),
-                                                 GetActorRightVector());
+        const float SinAoA = FVector::DotProduct(FVector::CrossProduct(VelDir, Fwd),GetActorRightVector());
+        DebugSinAoA = SinAoA;
         AoADeg = -FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(SinAoA, -1.f, 1.f)));
     }
     DebugAoA = AoADeg;
@@ -137,31 +199,30 @@ void AAAircraftPaw::ApplyFlightForces(float DeltaTime)
     FHitResult GroundHit;
     FCollisionQueryParams Params;
     Params.AddIgnoredActor(this);
+    
+    const FVector GearStart = MainGearContact->GetComponentLocation();
+    const FVector GearEnd = GearStart + Delta;
 
-    DrawDebugLine(GetWorld(), Start, End, FColor::Red, false, 0.f, 0, 2.f);
-
-    if (GetWorld()->LineTraceSingleByChannel(GroundHit, Start, End, ECC_WorldStatic, Params))
+    if (bDrawDebug)
     {
-        const FVector GearOffset = Start - GetActorLocation();
-        SetActorLocation(GroundHit.Location - GearOffset);
+        DrawDebugLine(GetWorld(), GearStart, GearEnd, FColor::Red, false, 0.f, 0, 2.f);
+    }
 
-        if (!bOnGround)
-        {
-            const float TouchdownVS = GetVerticalSpeedFPM();
-            UE_LOG(LogTemp, Warning, TEXT("TOUCHDOWN — VS: %.0f fpm | Roll: %.1f | IAS: %.0f kt"),
-                TouchdownVS, GetRollDeg(), GetAirspeedKnots());
-            bOnGround = true;
-        }
-
-        // Anula solo la componente vertical: sigues rodando hacia adelante
-        Velocity.Z = 0.f;
+    if (GetWorld()->LineTraceSingleByChannel(GroundHit, GearStart, GearEnd, ECC_WorldStatic, Params))
+    {
+        HandleTouchdown(GroundHit, GearStart - Start);
+        return;
+    }
+    
+    FHitResult BodyHit;
+    if (GetWorld()->LineTraceSingleByChannel(BodyHit, Start, End, ECC_WorldStatic, Params))
+    {
+        SetActorLocation(BodyHit.Location);
+        Crash(ECrashReason::Collision);
         return;
     }
 
-    bOnGround = false;
     AddActorWorldOffset(Delta, false);
-    
-    
 }
 
 void AAAircraftPaw::ApplyRotationInput(float DeltaTime)
@@ -199,6 +260,13 @@ void AAAircraftPaw::ApplyGroundRoll(float DeltaTime)
         Dir.Z = 0.f;
         Velocity = Dir.GetSafeNormal() * NewSpeed;
         AddActorWorldOffset(Velocity * DeltaTime, false);
+        CheckStillOnRunway();
+    }
+    else
+    {
+        Velocity = FVector::ZeroVector;
+        State = EAircraftState::Stopped;
+        UE_LOG(LogTemp, Warning, TEXT("STOPPED — aterrizaje completado"));
     }
 }
 
@@ -214,7 +282,8 @@ void AAAircraftPaw::OnRoll(const FInputActionValue& Value)
 
 void AAAircraftPaw::OnThrottle(const FInputActionValue& Value)
 {
-    ThrottleTarget = FMath::Clamp(ThrottleTarget + Value.Get<float>() * 0.02f, 0.f, 1.f);
+    const float Dt = GetWorld()->GetDeltaSeconds();
+    ThrottleTarget = FMath::Clamp(ThrottleTarget + Value.Get<float>() * ThrottleRatePerSec * Dt, 0.f, 1.f);
 }
 
 // Called every frame
@@ -223,14 +292,17 @@ void AAAircraftPaw::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
     
     Throttle = FMath::FInterpConstantTo(Throttle, ThrottleTarget, DeltaTime, ThrottleResponse);
-    if (bOnGround)
+    switch (State)
     {
-        ApplyGroundRoll(DeltaTime);
-    }
-    else
-    {
+    case EAircraftState::Airborne:
         ApplyRotationInput(DeltaTime);
         ApplyFlightForces(DeltaTime);
+        break;
+    case EAircraftState::Rolling:
+        ApplyGroundRoll(DeltaTime);
+        break;
+    default: // Stopped / Crashed: quieto
+        break;
     }
     
     if (GEngine)
@@ -245,16 +317,18 @@ void AAAircraftPaw::Tick(float DeltaTime)
                 "LIFT: %.0f N  vs  PESO: %.0f N   (ratio %.2f)\n"
                 "Thrust: %.0f N | Drag: %.0f N\n"
                 "Q: %.0f | CL: %.4f | SinAoA-raw: %.4f | Speed(m/s): %.1f\n"    
-                "PitchInput: %.2f | RollInput: %.2f"),
+                "PitchInput: %.2f | RollInput: %.2f\n"
+                "State: %s"),
                 GetAirspeedKnots(), GetAltitudeFeet(), GetVerticalSpeedFPM(), Throttle,
                 DebugAoA, GetPitchDeg(), GetRollDeg(),
                 DebugLiftN, WeightN, LiftRatio,
                 DebugThrustN, DebugDragN,
                 DebugQ, DebugCL, DebugSinAoA, DebugSpeed,                          
-                PitchInput, RollInput));
+                PitchInput, RollInput,
+                *UEnum::GetValueAsString(State)));
     }
     
-    if (ILS && ILS->IsSignalValid())
+    if (GEngine && ILS && ILS->IsSignalValid())
     {
         const float Loc = ILS->GetLocalizerDeviationDeg();
         const float GS  = ILS->GetGlideslopeDeviationDeg();
