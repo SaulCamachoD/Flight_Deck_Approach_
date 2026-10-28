@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "AAircraftPaw.h"
+#include "AircraftPawn.h"
 #include "Components/StaticMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
@@ -10,12 +10,14 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "InputActionValue.h"
 #include "GameFramework/PlayerController.h"
-#include "UILSComponent.h"
+#include "ILSComponent.h"
 #include "Engine/Engine.h"
 #include "DrawDebugHelpers.h"
+#include "FlightInstrumentWidget.h"
+#include "Blueprint/UserWidget.h"
 
 // Sets default values
-AAAircraftPaw::AAAircraftPaw()
+AAircraftPawn::AAircraftPawn()
 {
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -40,7 +42,7 @@ AAAircraftPaw::AAAircraftPaw()
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm);
     
-    ILS = CreateDefaultSubobject<UUILSComponent>(TEXT("ILS"));
+    ILS = CreateDefaultSubobject<UILSComponent>(TEXT("ILS"));
     MainGearContact = CreateDefaultSubobject<USceneComponent>(TEXT("MainGearContact"));
     MainGearContact->SetupAttachment(Root);
     AutoPossessPlayer = EAutoReceiveInput::Player0; 
@@ -48,7 +50,7 @@ AAAircraftPaw::AAAircraftPaw()
 }
 
 // Called when the game starts or when spawned
-void AAAircraftPaw::BeginPlay()
+void AAircraftPawn::BeginPlay()
 {
 	Super::BeginPlay();
     
@@ -65,11 +67,19 @@ void AAAircraftPaw::BeginPlay()
                 Subsystem->AddMappingContext(FlightMappingContext, 0);
             }
         }
+        
+        if (InstrumentsWidgetClass)
+        {
+            if (UFlightInstrumentWidget* W = CreateWidget<UFlightInstrumentWidget>(PC, InstrumentsWidgetClass))
+            {
+                W->AddToViewport();
+            }
+        }
     }
 	
 }
 
-bool AAAircraftPaw::IsRunway(const FHitResult& Hit) const
+bool AAircraftPawn::IsRunway(const FHitResult& Hit) const
 {
     const AActor* HitActor = Hit.GetActor();
     const UPrimitiveComponent* HitComp = Hit.GetComponent();
@@ -77,28 +87,31 @@ bool AAAircraftPaw::IsRunway(const FHitResult& Hit) const
         || (HitComp && HitComp->ComponentHasTag(RunwayTag));
 }
 
-void AAAircraftPaw::HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset)
+void AAircraftPawn::HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset)
 {
     SetActorLocation(Hit.Location - GearOffset);
 
-    const float VS    = GetVerticalSpeedFPM();
-    const float Roll  = GetRollDeg();
-    const float Pitch = GetPitchDeg();
+    FTouchdownData Data;
+    Data.VerticalSpeedFPM = GetVerticalSpeedFPM();
+    Data.RollDeg          = GetRollDeg();
+    Data.PitchDeg         = GetPitchDeg();
+    Data.AirspeedKnots    = GetAirspeedKnots();
+    Data.Location         = GetActorLocation();
 
-    UE_LOG(LogTemp, Warning, TEXT("TOUCHDOWN — VS: %.0f fpm | Roll: %.1f | Pitch: %.1f | IAS: %.0f kt"),
-        VS, Roll, Pitch, GetAirspeedKnots());
+    UE_LOG(LogTemp, Warning, TEXT("TOUCHDOWN on %s — VS: %.0f fpm | Roll: %.1f | Pitch: %.1f | IAS: %.0f kt"),
+        *GetNameSafe(Hit.GetActor()), Data.VerticalSpeedFPM, Data.RollDeg, Data.PitchDeg, Data.AirspeedKnots);
 
-    if (!IsRunway(Hit))                          { Crash(ECrashReason::OffRunway);     return; }
-    if (-VS > MaxTouchdownSinkFPM)               { Crash(ECrashReason::HardLanding);   return; }
-    if (FMath::Abs(Roll) > MaxTouchdownBankDeg)  { Crash(ECrashReason::ExcessiveBank); return; }
-    if (Pitch < MinTouchdownPitchDeg)            { Crash(ECrashReason::NoseFirst);     return; }
+    if (!IsRunway(Hit))                                 { Crash(ECrashReason::OffRunway);     return; }
+    if (-Data.VerticalSpeedFPM > MaxTouchdownSinkFPM)   { Crash(ECrashReason::HardLanding);   return; }
+    if (FMath::Abs(Data.RollDeg) > MaxTouchdownBankDeg) { Crash(ECrashReason::ExcessiveBank); return; }
+    if (Data.PitchDeg < MinTouchdownPitchDeg)           { Crash(ECrashReason::NoseFirst);     return; }
 
-    // Aterrizaje válido
     Velocity.Z = 0.f;
     State = EAircraftState::Rolling;
+    OnTouchdown.Broadcast(Data);
 }
 
-void AAAircraftPaw::Crash(ECrashReason Reason)
+void AAircraftPawn::Crash(ECrashReason Reason)
 {
     if (State == EAircraftState::Crashed) return;
 
@@ -107,10 +120,11 @@ void AAAircraftPaw::Crash(ECrashReason Reason)
     Throttle = ThrottleTarget = 0.f;
 
     UE_LOG(LogTemp, Error, TEXT("CRASH — %s"), *UEnum::GetValueAsString(Reason));
+    OnCrash.Broadcast(Reason);
 
 }
 
-void AAAircraftPaw::CheckStillOnRunway()
+void AAircraftPawn::CheckStillOnRunway()
 {
     // Trace corto hacia abajo desde el tren: si ya no hay pista debajo, se salió
     const FVector Start = MainGearContact->GetComponentLocation() + FVector(0.f, 0.f, 50.f);
@@ -128,7 +142,7 @@ void AAAircraftPaw::CheckStillOnRunway()
     }
 }
 
-void AAAircraftPaw::ApplyFlightForces(float DeltaTime)
+void AAircraftPawn::ApplyFlightForces(float DeltaTime)
 {
 	const FVector Fwd = GetActorForwardVector();
     const FVector Up  = GetActorUpVector();
@@ -225,7 +239,7 @@ void AAAircraftPaw::ApplyFlightForces(float DeltaTime)
     AddActorWorldOffset(Delta, false);
 }
 
-void AAAircraftPaw::ApplyRotationInput(float DeltaTime)
+void AAircraftPawn::ApplyRotationInput(float DeltaTime)
 {
     FRotator Delta(PitchInput * PitchRateDeg * DeltaTime,
                    0.f,
@@ -238,7 +252,7 @@ void AAAircraftPaw::ApplyRotationInput(float DeltaTime)
     AddActorWorldRotation(FRotator(0.f, YawRate * DeltaTime, 0.f));
 }
 
-void AAAircraftPaw::ApplyGroundRoll(float DeltaTime)
+void AAircraftPawn::ApplyGroundRoll(float DeltaTime)
 {
     // Nivelar la actitud: el avión se asienta sobre el tren
     FRotator R = GetActorRotation();
@@ -267,27 +281,28 @@ void AAAircraftPaw::ApplyGroundRoll(float DeltaTime)
         Velocity = FVector::ZeroVector;
         State = EAircraftState::Stopped;
         UE_LOG(LogTemp, Warning, TEXT("STOPPED — aterrizaje completado"));
+        OnStopped.Broadcast();
     }
 }
 
-void AAAircraftPaw::OnPitch(const FInputActionValue& Value)
+void AAircraftPawn::OnPitch(const FInputActionValue& Value)
 {
     PitchInput = Value.Get<float>();
 }
 
-void AAAircraftPaw::OnRoll(const FInputActionValue& Value)
+void AAircraftPawn::OnRoll(const FInputActionValue& Value)
 {
     RollInput = Value.Get<float>();
 }
 
-void AAAircraftPaw::OnThrottle(const FInputActionValue& Value)
+void AAircraftPawn::OnThrottle(const FInputActionValue& Value)
 {
     const float Dt = GetWorld()->GetDeltaSeconds();
     ThrottleTarget = FMath::Clamp(ThrottleTarget + Value.Get<float>() * ThrottleRatePerSec * Dt, 0.f, 1.f);
 }
 
 // Called every frame
-void AAAircraftPaw::Tick(float DeltaTime)
+void AAircraftPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
     
@@ -348,34 +363,34 @@ void AAAircraftPaw::Tick(float DeltaTime)
 }
 
 // Called to bind functionality to input
-void AAAircraftPaw::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
     
     if (UEnhancedInputComponent* EIC = Cast<UEnhancedInputComponent>(PlayerInputComponent))
     {
-        EIC->BindAction(PitchAction, ETriggerEvent::Triggered, this, &AAAircraftPaw::OnPitch);
-        EIC->BindAction(PitchAction, ETriggerEvent::Completed, this, &AAAircraftPaw::OnPitch);
+        EIC->BindAction(PitchAction, ETriggerEvent::Triggered, this, &AAircraftPawn::OnPitch);
+        EIC->BindAction(PitchAction, ETriggerEvent::Completed, this, &AAircraftPawn::OnPitch);
 
-        EIC->BindAction(RollAction, ETriggerEvent::Triggered, this, &AAAircraftPaw::OnRoll);
-        EIC->BindAction(RollAction, ETriggerEvent::Completed, this, &AAAircraftPaw::OnRoll);
+        EIC->BindAction(RollAction, ETriggerEvent::Triggered, this, &AAircraftPawn::OnRoll);
+        EIC->BindAction(RollAction, ETriggerEvent::Completed, this, &AAircraftPawn::OnRoll);
 
-        EIC->BindAction(ThrottleAction, ETriggerEvent::Triggered, this, &AAAircraftPaw::OnThrottle);
+        EIC->BindAction(ThrottleAction, ETriggerEvent::Triggered, this, &AAircraftPawn::OnThrottle);
     }
 
 }
 
-float AAAircraftPaw::GetAirspeedKnots() const
+float AAircraftPawn::GetAirspeedKnots() const
 {
     return Velocity.Size() * 0.01f * 1.94384f;
 }
 
-float AAAircraftPaw::GetVerticalSpeedFPM() const
+float AAircraftPawn::GetVerticalSpeedFPM() const
 {
     return Velocity.Z * 0.01f * 196.85f;
 }
 
-float AAAircraftPaw::GetAltitudeFeet() const
+float AAircraftPawn::GetAltitudeFeet() const
 {
     return GetActorLocation().Z * 0.01f * 3.28084f;
 }

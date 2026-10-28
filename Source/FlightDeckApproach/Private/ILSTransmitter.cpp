@@ -6,7 +6,7 @@
 
 AILSTransmitter::AILSTransmitter()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 		
 	DirectionArrow = CreateDefaultSubobject<UArrowComponent>(TEXT("DirectionArrow"));
 	SetRootComponent(DirectionArrow);

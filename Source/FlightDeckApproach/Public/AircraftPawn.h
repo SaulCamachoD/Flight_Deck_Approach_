@@ -3,7 +3,7 @@
 #pragma once
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
-#include "AAircraftPaw.generated.h"
+#include "AircraftPawn.generated.h"
 
 UENUM(BlueprintType)
 enum class ECrashReason : uint8
@@ -26,6 +26,21 @@ enum class EAircraftState : uint8
 	Crashed
 };
 
+USTRUCT(BlueprintType)
+struct FTouchdownData
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadOnly) float VerticalSpeedFPM = 0.f;
+	UPROPERTY(BlueprintReadOnly) float RollDeg = 0.f;
+	UPROPERTY(BlueprintReadOnly) float PitchDeg = 0.f;
+	UPROPERTY(BlueprintReadOnly) float AirspeedKnots = 0.f;
+	UPROPERTY(BlueprintReadOnly) FVector Location = FVector::ZeroVector;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTouchdown, const FTouchdownData&, Data);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCrash, ECrashReason, Reason);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStopped);
+
 class UStaticMeshComponent;
 class USpringArmComponent;
 class UCameraComponent;
@@ -33,15 +48,15 @@ class UInputMappingContext;
 class UInputAction;
 struct FInputActionValue;
 class USkeletalMeshComponent;
-class UUILSComponent;
+class UILSComponent;
 
 UCLASS()
-class FLIGHTDECKAPPROACH_API AAAircraftPaw : public APawn
+class FLIGHTDECKAPPROACH_API AAircraftPawn : public APawn
 {
 	GENERATED_BODY()
 
 public:
-	AAAircraftPaw();
+	AAircraftPawn();
 	
 	virtual void Tick(float DeltaTime) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
@@ -53,9 +68,15 @@ public:
 	UFUNCTION(BlueprintPure) float GetRollDeg() const { return GetActorRotation().Roll; };
 	UFUNCTION(BlueprintPure) float GetAltitudeFeet() const;
 	UFUNCTION(BlueprintPure) float GetThrottle() const { return Throttle; }
+	UFUNCTION(BlueprintPure) UILSComponent* GetILS() const { return ILS; }
+
 	//Flight State
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Flight|State")
 	EAircraftState State = EAircraftState::Airborne;
+	
+	UPROPERTY(BlueprintAssignable, Category="Flight|Events") FOnTouchdown OnTouchdown;
+	UPROPERTY(BlueprintAssignable, Category="Flight|Events") FOnCrash OnCrash;
+	UPROPERTY(BlueprintAssignable, Category="Flight|Events") FOnStopped OnStopped;
 
 
 protected:
@@ -66,7 +87,7 @@ protected:
 	UPROPERTY(VisibleAnywhere) USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere) UCameraComponent* Camera;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aircraft") TObjectPtr<USkeletalMeshComponent> AirframeMesh;
-	UPROPERTY(VisibleAnywhere) UUILSComponent* ILS;
+	UPROPERTY(VisibleAnywhere) UILSComponent* ILS;
 	UPROPERTY(VisibleAnywhere, Category="Aircraft") USceneComponent* MainGearContact;
 
 	// --- Parámetros de tuning (EditAnywhere para iterar sin recompilar) ---
@@ -96,7 +117,9 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Flight|Landing") float MaxTouchdownSinkFPM = 1000.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Landing") float MaxTouchdownBankDeg = 10.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Landing") float MinTouchdownPitchDeg = -2.f;
-
+	
+	UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<class UFlightInstrumentWidget> InstrumentsWidgetClass;
+	
 	bool IsRunway(const FHitResult& Hit) const;
 	void HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset);
 	void Crash(ECrashReason Reason);

@@ -4,18 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "UILSComponent.generated.h"
+#include "ILSComponent.generated.h"
 
 class AILSTransmitter;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class FLIGHTDECKAPPROACH_API UUILSComponent : public UActorComponent
+class FLIGHTDECKAPPROACH_API UILSComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
 public:	
 
-	UUILSComponent();
+	UILSComponent();
 	
 	virtual void BeginPlay() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

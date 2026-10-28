@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "UWindSubsystem.generated.h"
+#include "WindSubsystem.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class FLIGHTDECKAPPROACH_API UUWindSubsystem : public UWorldSubsystem
+class FLIGHTDECKAPPROACH_API UWindSubsystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 	

@@ -1,17 +1,17 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "UILSComponent.h"
+#include "ILSComponent.h"
 #include "ILSTransmitter.h"
 #include "Kismet/GameplayStatics.h"
 
-UUILSComponent::UUILSComponent()
+UILSComponent::UILSComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 }
 
 
-void UUILSComponent::BeginPlay()
+void UILSComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
@@ -31,23 +31,23 @@ void UUILSComponent::BeginPlay()
 	
 }
 
-void UUILSComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UILSComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	UpdateDeviations();
 }
 
-float UUILSComponent::GetLocalizerNormalized() const
+float UILSComponent::GetLocalizerNormalized() const
 {
 	return FMath::Clamp(LocalizerDeviationDeg / LocalizerFullScaleDeg, -1.f, 1.f);
 }
 
-float UUILSComponent::GetGlideslopeNormalized() const
+float UILSComponent::GetGlideslopeNormalized() const
 {
 	return FMath::Clamp(GlideslopeDeviationDeg / GlideslopeFullScaleDeg, -1.f, 1.f);
 }
 
-void UUILSComponent::UpdateDeviations()
+void UILSComponent::UpdateDeviations()
 {
 	if (!Transmitter)
 	{
@@ -74,11 +74,13 @@ void UUILSComponent::UpdateDeviations()
 	}
 	bSignalValid = true;
 
-	// --- LOCALIZER: ángulo lateral respecto al eje de pista ---
-	LocalizerDeviationDeg = FMath::RadiansToDegrees(FMath::Atan2(Local.Y, DistAlong));
+	// --- LOCALIZER: medido desde su antena, al otro extremo de la pista ---
+	const float DistToLoc = DistAlong + Transmitter->LocalizerAntennaMetersFromThreshold * 100.f;
+	LocalizerDeviationDeg = FMath::RadiansToDegrees(FMath::Atan2(Local.Y, DistToLoc));
 
-	// --- GLIDESLOPE: ángulo vertical actual menos el objetivo (3°) ---
-	const float CurrentAngleDeg = FMath::RadiansToDegrees(FMath::Atan2(Local.Z, DistAlong));
+	// --- GLIDESLOPE: medido desde la zona de toque (aim point) ---
+	const float DistToAim = DistAlong + Transmitter->AimPointMetersFromThreshold * 100.f;
+	const float CurrentAngleDeg = FMath::RadiansToDegrees(FMath::Atan2(Local.Z, DistToAim));
 	GlideslopeDeviationDeg = CurrentAngleDeg - Transmitter->GlideslopeAngleDeg;
 
 	// --- DME en millas náuticas ---
