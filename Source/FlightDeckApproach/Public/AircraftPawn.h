@@ -91,9 +91,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category="Aircraft") USceneComponent* MainGearContact;
 
 	// --- Parámetros de tuning (EditAnywhere para iterar sin recompilar) ---
-	UPROPERTY(EditAnywhere, Category="Flight|Forces") float MaxThrustN = 60000.f;
+	UPROPERTY(EditAnywhere, Category="Flight|Forces") float MaxThrustN = 12000.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float LiftCoefficient = 1.5f;
-	UPROPERTY(EditAnywhere, Category="Flight|Forces") float DragCoefficient = 0.025f;
+	UPROPERTY(EditAnywhere, Category="Flight|Forces") float DragCoefficient = 0.05f;
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float InducedDragFactor = 0.08f;
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float WingAreaM2 = 50.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float MassKg = 2000.f;
@@ -103,6 +103,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float YawRateDeg = 10.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float ThrottleResponse = 0.5f;
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float ThrottleRatePerSec = 1.2f;
+	UPROPERTY(EditAnywhere, Category="Flight|Start") float StartSpeedKnots = 140.f;
+	UPROPERTY(EditAnywhere, Category="Flight|Start") float StartFlightPathDeg = -3.f;
+	UPROPERTY(EditAnywhere, Category="Flight|Start") float StartPitchDeg = -2.2f;
+	
 	UPROPERTY(EditAnywhere, Category="Debug") bool bDrawDebug = false;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputMappingContext* FlightMappingContext;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* PitchAction;

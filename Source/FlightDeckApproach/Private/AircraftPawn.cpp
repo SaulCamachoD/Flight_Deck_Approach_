@@ -54,7 +54,15 @@ void AAircraftPawn::BeginPlay()
 {
 	Super::BeginPlay();
     
-    Velocity = GetActorForwardVector() * 6700.f;
+    // Arranca sobre la senda: la velocidad baja a -3° y la nariz queda 0.8° por encima (AoA de equilibrio)
+    FRotator StartRot = GetActorRotation();
+    StartRot.Pitch = StartPitchDeg;
+    SetActorRotation(StartRot);
+
+    FRotator PathRot = StartRot;
+    PathRot.Pitch = StartFlightPathDeg;
+    Velocity = PathRot.Vector() * (StartSpeedKnots / 1.94384f) * 100.f;
+    
     ThrottleTarget = Throttle;
     
     if (APlayerController* PC = Cast<APlayerController>(GetController()))
