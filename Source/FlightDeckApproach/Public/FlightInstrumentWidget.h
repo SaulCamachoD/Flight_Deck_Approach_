@@ -24,6 +24,14 @@ protected:
 	UPROPERTY(meta=(BindWidget)) UTextBlock* ThrottleText;
 	UPROPERTY(meta=(BindWidgetOptional)) class UProgressBar* ThrottleBar;
 	UPROPERTY(meta=(BindWidget)) UTextBlock* DMEText;
+	
+	// Agujas de la cruz ILS (Images en el WBP)
+	UPROPERTY(meta=(BindWidget)) class UWidget* LocalizerNeedle;
+	UPROPERTY(meta=(BindWidget)) class UWidget* GlideslopeNeedle;
+	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* RunwayText;
+
+	// Píxeles que se mueve la aguja con desviación máxima (±1)
+	UPROPERTY(EditAnywhere, Category="HUD|ILS") float NeedleRangePx = 120.f;
 
 private:
 	UPROPERTY() TObjectPtr<AAircraftPawn> Aircraft;	

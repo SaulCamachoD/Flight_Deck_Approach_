@@ -5,6 +5,7 @@
 #include "AircraftPawn.h"
 #include "ILSComponent.h"
 #include "Components/ProgressBar.h"
+#include "ILSTransmitter.h"
 #include "Components/TextBlock.h"
 
 
@@ -41,9 +42,34 @@ void UFlightInstrumentWidget::NativeTick(const FGeometry& MyGeometry, float InDe
 	   FString::Printf(TEXT("%.0f%%"), Aircraft->GetThrottle() * 100.f)));
 
 	const UILSComponent* ILS = Aircraft->GetILS();
-	DMEText->SetText(FText::FromString(
-		(ILS && ILS->IsSignalValid())
+	const bool bILS = ILS && ILS->IsSignalValid();
+
+	// --- DME ---
+	DMEText->SetText(FText::FromString(bILS
 		? FString::Printf(TEXT("%.1f NM"), ILS->GetDistanceNM())
 		: FString(TEXT("--- NM"))));
-	
+
+	// --- Cruz ILS: se oculta sin señal, como la bandera de un CDI real ---
+	const ESlateVisibility NeedleVis = bILS ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden;
+	LocalizerNeedle->SetVisibility(NeedleVis);
+	GlideslopeNeedle->SetVisibility(NeedleVis);
+
+	if (bILS)
+	{
+		// LOC > 0 = estás a la derecha del eje -> la aguja va a la izquierda
+		LocalizerNeedle->SetRenderTranslation(
+			FVector2D(-ILS->GetLocalizerNormalized() * NeedleRangePx, 0.f));
+
+		// GS > 0 = estás alto -> la aguja baja (en pantalla, Y positiva es hacia abajo)
+		GlideslopeNeedle->SetRenderTranslation(
+			FVector2D(0.f, ILS->GetGlideslopeNormalized() * NeedleRangePx));
+	}
+
+	// --- RWY: rumbo 090 -> "09" ---
+	if (RunwayText && ILS && ILS->GetTransmitter())
+	{
+		int32 Rwy = FMath::RoundToInt(ILS->GetTransmitter()->RunwayHeadingDeg / 10.f);
+		if (Rwy <= 0) Rwy += 36;   // rumbo 0 o 360 es pista 36
+		RunwayText->SetText(FText::FromString(FString::Printf(TEXT("%02d"), Rwy)));
+	}
 }

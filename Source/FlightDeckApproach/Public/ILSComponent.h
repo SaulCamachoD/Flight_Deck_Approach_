@@ -31,6 +31,8 @@ public:
 	UFUNCTION(BlueprintPure) float GetLocalizerNormalized() const;
 	UFUNCTION(BlueprintPure) float GetGlideslopeNormalized() const;
 	
+	UFUNCTION(BlueprintPure) AILSTransmitter* GetTransmitter() const { return Transmitter; }
+	
 protected:
 	// Si se deja vacío, se busca automáticamente el primero en el nivel.
 	UPROPERTY(EditAnywhere, Category="ILS") AILSTransmitter* Transmitter = nullptr;

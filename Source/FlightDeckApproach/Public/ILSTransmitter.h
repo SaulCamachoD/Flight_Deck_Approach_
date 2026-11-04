@@ -33,4 +33,6 @@ public:
 	
 	// Antena del localizer: al final de la pista + ~300 m. Tu pista mide 3000 m.
 	UPROPERTY(EditAnywhere, Category="ILS") float LocalizerAntennaMetersFromThreshold = 3300.f;
+	
+	
 };

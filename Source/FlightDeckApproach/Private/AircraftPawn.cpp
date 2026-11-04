@@ -362,7 +362,7 @@ void AAircraftPawn::Tick(float DeltaTime)
                 "LOC: %+.2f deg (%s)  [aguja %+.2f]\n"
                 "GS:  %+.2f deg (%s)  [aguja %+.2f]"),
                 ILS->GetDistanceNM(),
-                Loc, Loc > 0 ? TEXT("estas a la IZQ, corrige der") : TEXT("estas a la DER, corrige izq"),
+                Loc, Loc > 0 ? TEXT("estas a la DER, corrige izq") : TEXT("estas a la IZQ, corrige der"),
                 ILS->GetLocalizerNormalized(),
                 GS, GS > 0 ? TEXT("ALTO, baja") : TEXT("BAJO, sube"),
                 ILS->GetGlideslopeNormalized()));
