@@ -69,7 +69,8 @@ public:
 	UFUNCTION(BlueprintPure) float GetAltitudeFeet() const;
 	UFUNCTION(BlueprintPure) float GetThrottle() const { return Throttle; }
 	UFUNCTION(BlueprintPure) UILSComponent* GetILS() const { return ILS; }
-
+	virtual FVector GetVelocity() const override { return Velocity; }
+	
 	//Flight State
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Flight|State")
 	EAircraftState State = EAircraftState::Airborne;
@@ -129,7 +130,7 @@ protected:
 	void Crash(ECrashReason Reason);
 	void CheckStillOnRunway();
 
-public:	
+private:	
 	// Estado
 	FVector Velocity = FVector::ZeroVector;   // cm/s en espacio mundo
 	float Throttle = 0.6f;

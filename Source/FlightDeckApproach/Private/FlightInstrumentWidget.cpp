@@ -8,6 +8,20 @@
 #include "ILSTransmitter.h"
 #include "Components/TextBlock.h"
 
+namespace
+{
+	// Gira con el roll y desplaza con el pitch, perpendicular al horizonte ya girado
+	void ApplyAttitude(UWidget* W, float PitchDeg, float RollDeg, float PxPerDegree)
+	{
+		if (!W) return;
+		W->SetRenderTransformAngle(-RollDeg);
+		const float Offset = PitchDeg * PxPerDegree;
+		const float RollRad = FMath::DegreesToRadians(RollDeg);
+		W->SetRenderTranslation(FVector2D(
+			Offset * FMath::Sin(RollRad),
+			Offset * FMath::Cos(RollRad)));
+	}
+}
 
 void UFlightInstrumentWidget::NativeConstruct()
 {
@@ -72,4 +86,33 @@ void UFlightInstrumentWidget::NativeTick(const FGeometry& MyGeometry, float InDe
 		if (Rwy <= 0) Rwy += 36;   // rumbo 0 o 360 es pista 36
 		RunwayText->SetText(FText::FromString(FString::Printf(TEXT("%02d"), Rwy)));
 	}
+	
+	// --- Horizonte artificial (ADI) ---
+	const float Pitch = Aircraft->GetPitchDeg();
+	const float Roll  = Aircraft->GetRollDeg();
+
+	ApplyAttitude(AdiLadder, Pitch, Roll, AdiPxPerDeg);
+
+	// El indicador de alabeo solo gira, no sube ni baja
+	if (AdiRollPointer) AdiRollPointer->SetRenderTransformAngle(-Roll);
+
+	// --- Flight Path Marker ---
+	if (FlightPathMarker)
+	{
+		// Velocidad en ejes del avión: X adelante, Y derecha, Z arriba
+		const FVector V = Aircraft->GetActorTransform().InverseTransformVectorNoScale(Aircraft->GetVelocity());
+		if (V.X > 100.f)   // solo si avanzamos (> 1 m/s)
+		{
+			const float VertDeg = FMath::RadiansToDegrees(FMath::Atan2(V.Z, V.X));
+			const float LatDeg  = FMath::RadiansToDegrees(FMath::Atan2(V.Y, V.X));
+			// Pantalla: Y positiva es hacia abajo, así que la vertical va negada
+			FlightPathMarker->SetRenderTranslation(FVector2D(LatDeg * PxPerDeg, -VertDeg * PxPerDeg));
+			FlightPathMarker->SetVisibility(ESlateVisibility::HitTestInvisible);
+		}
+		else
+		{
+			FlightPathMarker->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
+	
 }

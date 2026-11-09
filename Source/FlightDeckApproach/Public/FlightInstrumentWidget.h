@@ -29,7 +29,17 @@ protected:
 	UPROPERTY(meta=(BindWidget)) class UWidget* LocalizerNeedle;
 	UPROPERTY(meta=(BindWidget)) class UWidget* GlideslopeNeedle;
 	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* RunwayText;
+	
+	// Flight path marker: hacia dónde va el avión
+	UPROPERTY(meta=(BindWidgetOptional)) class UWidget* FlightPathMarker;
 
+	// Píxeles por grado del FPM
+	UPROPERTY(EditAnywhere, Category="HUD|Attitude") float PxPerDeg = 16.f;
+	// --- Horizonte redondo (ADI) ---
+	UPROPERTY(meta=(BindWidgetOptional)) class UWidget* AdiLadder;
+	UPROPERTY(meta=(BindWidgetOptional)) class UWidget* AdiRollPointer;
+	UPROPERTY(EditAnywhere, Category="HUD|Attitude") float AdiPxPerDeg = 6.f;
+	
 	// Píxeles que se mueve la aguja con desviación máxima (±1)
 	UPROPERTY(EditAnywhere, Category="HUD|ILS") float NeedleRangePx = 120.f;
 
