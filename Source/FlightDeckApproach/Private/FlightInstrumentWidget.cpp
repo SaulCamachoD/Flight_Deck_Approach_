@@ -6,6 +6,7 @@
 #include "ILSComponent.h"
 #include "Components/ProgressBar.h"
 #include "ILSTransmitter.h"
+#include "Components/Image.h"
 #include "Components/TextBlock.h"
 
 namespace
@@ -113,6 +114,34 @@ void UFlightInstrumentWidget::NativeTick(const FGeometry& MyGeometry, float InDe
 		{
 			FlightPathMarker->SetVisibility(ESlateVisibility::Hidden);
 		}
+	}
+	
+	// --- VSI ---
+	const float VSfpm = Aircraft->GetVerticalSpeedFPM();
+	const FLinearColor HudGreen = FLinearColor::FromSRGBColor(FColor(0x7C, 0xFF, 0xB0));
+	const FLinearColor HudAmber = FLinearColor::FromSRGBColor(FColor(0xFF, 0xA0, 0x40));
+
+	// --- SINK RATE: solo en el aire, cerca del suelo y bajando rápido ---
+	const bool bSink = Aircraft->State == EAircraftState::Airborne
+		&& Aircraft->GetAltitudeFeet() < SinkRateMaxAltFt
+		&& VSfpm < -SinkRateWarnFPM;
+
+	if (VSIBar)
+	{
+		// Pivote arriba (0.5, 0): escala Y positiva crece hacia abajo (descenso),
+		// escala negativa se voltea hacia arriba (ascenso)
+		const float Fill = FMath::Clamp(-VSfpm / VSIRangeFPM, -1.f, 1.f);
+		VSIBar->SetRenderScale(FVector2D(1.f, Fill));
+		VSIBar->SetColorAndOpacity(bSink ? HudAmber : HudGreen);
+	}
+
+	if (SinkRateText)
+	{
+		// Parpadeo: 0.4 s encendido, 0.2 s apagado
+		const bool bBlinkOn = FMath::Fmod(GetWorld()->GetTimeSeconds(), 0.6f) < 0.4f;
+		SinkRateText->SetVisibility(bSink && bBlinkOn
+			? ESlateVisibility::HitTestInvisible
+			: ESlateVisibility::Hidden);
 	}
 	
 }

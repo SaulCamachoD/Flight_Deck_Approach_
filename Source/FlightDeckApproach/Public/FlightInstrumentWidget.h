@@ -40,6 +40,18 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) class UWidget* AdiRollPointer;
 	UPROPERTY(EditAnywhere, Category="HUD|Attitude") float AdiPxPerDeg = 6.f;
 	
+	// --- VSI y avisos ---
+	UPROPERTY(meta=(BindWidgetOptional)) class UImage* VSIBar;
+	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* SinkRateText;
+
+	// fpm que llenan la barra entera (hacia arriba o hacia abajo)
+	UPROPERTY(EditAnywhere, Category="HUD|VSI") float VSIRangeFPM = 2000.f;
+	// Aviso si desciendes más rápido que esto por debajo de SinkRateMaxAltFt
+	UPROPERTY(EditAnywhere, Category="HUD|Warnings") float SinkRateWarnFPM = 1000.f;
+	UPROPERTY(EditAnywhere, Category="HUD|Warnings") float SinkRateMaxAltFt = 2000.f;
+	
+	
+	
 	// Píxeles que se mueve la aguja con desviación máxima (±1)
 	UPROPERTY(EditAnywhere, Category="HUD|ILS") float NeedleRangePx = 120.f;
 
