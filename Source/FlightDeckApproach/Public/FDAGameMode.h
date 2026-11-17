@@ -4,13 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "AFDAGameMode.generated.h"
+#include "FDAGameMode.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class FLIGHTDECKAPPROACH_API AAFDAGameMode : public AGameModeBase
+class FLIGHTDECKAPPROACH_API AFDAGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
 	
