@@ -23,6 +23,10 @@ protected:
 	UPROPERTY(meta=(BindWidget)) UTextBlock* VerticalSpeedText;
 	UPROPERTY(meta=(BindWidget)) UTextBlock* ThrottleText;
 	UPROPERTY(meta=(BindWidgetOptional)) class UProgressBar* ThrottleBar;
+	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* ThrottleTargetText;
+	UPROPERTY(meta=(BindWidgetOptional)) class UWidget* ThrottleTargetMarker;
+	// Alto en px de ThrottleBar: el triángulo recorre esta distancia
+	UPROPERTY(EditAnywhere, Category="HUD|Throttle") float ThrottleBarHeightPx = 200.f;
 	UPROPERTY(meta=(BindWidget)) UTextBlock* DMEText;
 	
 	// Agujas de la cruz ILS (Images en el WBP)
@@ -47,6 +51,7 @@ protected:
 	// --- Cintas ---
 	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* SpeedTape;
 	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* AltitudeTape;
+	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* HeadingTape;
 	
 	// fpm que llenan la barra entera (hacia arriba o hacia abajo)
 	UPROPERTY(EditAnywhere, Category="HUD|VSI") float VSIRangeFPM = 2000.f;

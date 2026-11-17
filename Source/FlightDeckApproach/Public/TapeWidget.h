@@ -36,10 +36,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Tape") bool bShowNegative = false;
 	UPROPERTY(EditAnywhere, Category="Tape") int32 FontSize = 16;
 	UPROPERTY(EditAnywhere, Category="Tape") FLinearColor TapeColor = FLinearColor(0.2f, 1.f, 0.43f);
+	UPROPERTY(EditAnywhere, Category="Tape") bool bHorizontal = false;   // cinta de rumbo: se desliza de lado
+	UPROPERTY(EditAnywhere, Category="Tape") bool bWrap360 = false;      // 359 -> 0, números estilo "03", "36"
 
 private:
 	UPROPERTY() TArray<TObjectPtr<UTextBlock>> Labels;
 	UPROPERTY() TArray<TObjectPtr<UImage>> Ticks;
 	float Value = 0.f;
+	FText FormatLabel(float LabelValue) const;
 	
 };

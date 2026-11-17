@@ -54,8 +54,20 @@ void UFlightInstrumentWidget::NativeTick(const FGeometry& MyGeometry, float InDe
 
 	if (ThrottleBar) ThrottleBar->SetPercent(Aircraft->GetThrottle());
 
-	ThrottleText->SetText(FText::FromString(
-	   FString::Printf(TEXT("%.0f%%"), Aircraft->GetThrottle() * 100.f)));
+	ThrottleText->SetText(FText::FromString(FString::Printf(TEXT("%.0f%%"), Aircraft->GetThrottle() * 100.f)));
+	
+	// --- Throttle pedido: número arriba y triángulo junto a la barra ---
+	const float ThrTarget = Aircraft->GetThrottleTarget();
+	if (ThrottleTargetText)
+	{
+		ThrottleTargetText->SetText(FText::FromString(
+			FString::Printf(TEXT("%.0f%%"), ThrTarget * 100.f)));
+	}
+	if (ThrottleTargetMarker)
+	{
+		// Sube desde la base de la barra: Y negativa es hacia arriba
+		ThrottleTargetMarker->SetRenderTranslation(FVector2D(0.f, -ThrTarget * ThrottleBarHeightPx));
+	}
 
 	const UILSComponent* ILS = Aircraft->GetILS();
 	const bool bILS = ILS && ILS->IsSignalValid();
@@ -121,6 +133,8 @@ void UFlightInstrumentWidget::NativeTick(const FGeometry& MyGeometry, float InDe
 	// --- Cintas ---
 	if (SpeedTape)    SpeedTape->SetValue(Aircraft->GetAirspeedKnots());
 	if (AltitudeTape) AltitudeTape->SetValue(Aircraft->GetAltitudeFeet());
+	if (HeadingTape)  HeadingTape->SetValue(Aircraft->GetHeadingDeg());
+	
 	// --- VSI ---
 	const float VSfpm = Aircraft->GetVerticalSpeedFPM();
 	const FLinearColor HudGreen = FLinearColor::FromSRGBColor(FColor(0x7C, 0xFF, 0xB0));

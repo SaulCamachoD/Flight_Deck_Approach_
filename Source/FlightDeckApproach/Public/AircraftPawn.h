@@ -69,7 +69,10 @@ public:
 	UFUNCTION(BlueprintPure) float GetAltitudeFeet() const;
 	UFUNCTION(BlueprintPure) float GetThrottle() const { return Throttle; }
 	UFUNCTION(BlueprintPure) UILSComponent* GetILS() const { return ILS; }
+	UFUNCTION(BlueprintPure) float GetHeadingDeg() const { return FRotator::ClampAxis(GetActorRotation().Yaw); }   // 0..360
+	UFUNCTION(BlueprintPure) float GetThrottleTarget() const { return ThrottleTarget; }
 	virtual FVector GetVelocity() const override { return Velocity; }
+	
 	
 	//Flight State
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Flight|State")
