@@ -44,6 +44,10 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) class UImage* VSIBar;
 	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* SinkRateText;
 
+	// --- Cintas ---
+	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* SpeedTape;
+	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* AltitudeTape;
+	
 	// fpm que llenan la barra entera (hacia arriba o hacia abajo)
 	UPROPERTY(EditAnywhere, Category="HUD|VSI") float VSIRangeFPM = 2000.f;
 	// Aviso si desciendes más rápido que esto por debajo de SinkRateMaxAltFt

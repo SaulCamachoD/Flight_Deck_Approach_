@@ -6,6 +6,7 @@
 #include "ILSComponent.h"
 #include "Components/ProgressBar.h"
 #include "ILSTransmitter.h"
+#include "TapeWidget.h"
 #include "Components/Image.h"
 #include "Components/TextBlock.h"
 
@@ -114,8 +115,12 @@ void UFlightInstrumentWidget::NativeTick(const FGeometry& MyGeometry, float InDe
 		{
 			FlightPathMarker->SetVisibility(ESlateVisibility::Hidden);
 		}
+		
+		
 	}
-	
+	// --- Cintas ---
+	if (SpeedTape)    SpeedTape->SetValue(Aircraft->GetAirspeedKnots());
+	if (AltitudeTape) AltitudeTape->SetValue(Aircraft->GetAltitudeFeet());
 	// --- VSI ---
 	const float VSfpm = Aircraft->GetVerticalSpeedFPM();
 	const FLinearColor HudGreen = FLinearColor::FromSRGBColor(FColor(0x7C, 0xFF, 0xB0));
