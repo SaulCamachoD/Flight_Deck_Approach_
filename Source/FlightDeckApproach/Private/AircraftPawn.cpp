@@ -14,6 +14,7 @@
 #include "Engine/Engine.h"
 #include "DrawDebugHelpers.h"
 #include "FlightInstrumentWidget.h"
+#include "LandingScoreComponent.h"
 #include "Blueprint/UserWidget.h"
 
 // Sets default values
@@ -43,6 +44,7 @@ AAircraftPawn::AAircraftPawn()
     Camera->SetupAttachment(SpringArm);
     
     ILS = CreateDefaultSubobject<UILSComponent>(TEXT("ILS"));
+    LandingScore = CreateDefaultSubobject<ULandingScoreComponent>(TEXT("LandingScore"));
     MainGearContact = CreateDefaultSubobject<USceneComponent>(TEXT("MainGearContact"));
     MainGearContact->SetupAttachment(Root);
     AutoPossessPlayer = EAutoReceiveInput::Player0; 

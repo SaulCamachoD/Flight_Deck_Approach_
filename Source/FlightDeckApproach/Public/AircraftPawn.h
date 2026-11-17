@@ -46,6 +46,7 @@ class USpringArmComponent;
 class UCameraComponent;
 class UInputMappingContext;
 class UInputAction;
+class ULandingScoreComponent;
 struct FInputActionValue;
 class USkeletalMeshComponent;
 class UILSComponent;
@@ -69,6 +70,7 @@ public:
 	UFUNCTION(BlueprintPure) float GetAltitudeFeet() const;
 	UFUNCTION(BlueprintPure) float GetThrottle() const { return Throttle; }
 	UFUNCTION(BlueprintPure) UILSComponent* GetILS() const { return ILS; }
+	UFUNCTION(BlueprintPure) ULandingScoreComponent* GetLandingScore() const { return LandingScore; }
 	UFUNCTION(BlueprintPure) float GetHeadingDeg() const { return FRotator::ClampAxis(GetActorRotation().Yaw); }   // 0..360
 	UFUNCTION(BlueprintPure) float GetThrottleTarget() const { return ThrottleTarget; }
 	virtual FVector GetVelocity() const override { return Velocity; }
@@ -92,6 +94,7 @@ protected:
 	UPROPERTY(VisibleAnywhere) UCameraComponent* Camera;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aircraft") TObjectPtr<USkeletalMeshComponent> AirframeMesh;
 	UPROPERTY(VisibleAnywhere) UILSComponent* ILS;
+	UPROPERTY(VisibleAnywhere) ULandingScoreComponent* LandingScore;
 	UPROPERTY(VisibleAnywhere, Category="Aircraft") USceneComponent* MainGearContact;
 
 	// --- Parámetros de tuning (EditAnywhere para iterar sin recompilar) ---
