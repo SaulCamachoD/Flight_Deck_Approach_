@@ -33,6 +33,13 @@ struct FLandingResult
 	UPROPERTY(BlueprintReadOnly) int32 ZonePoints = 0;
 	UPROPERTY(BlueprintReadOnly) int32 CenterlinePoints = 0;
 	UPROPERTY(BlueprintReadOnly) int32 SpeedPoints = 0;
+	
+	// --- 0..1 por apartado (barras del reporte) ---
+	UPROPERTY(BlueprintReadOnly) float TrackingRatio = 0.f;
+	UPROPERTY(BlueprintReadOnly) float SinkRatio = 0.f;
+	UPROPERTY(BlueprintReadOnly) float ZoneRatio = 0.f;
+	UPROPERTY(BlueprintReadOnly) float CenterlineRatio = 0.f;
+	UPROPERTY(BlueprintReadOnly) float SpeedRatio = 0.f;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnLandingScored, const FLandingResult&, Result);
@@ -65,6 +72,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Score|Points") int32 MaxCenterlinePoints = 150;
 	UPROPERTY(EditAnywhere, Category="Score|Points") int32 MaxSpeedPoints      = 100;
 
+		
 	// --- Tolerancias: hasta "Full" puntuación completa, en "Zero" ya no hay puntos ---
 	UPROPERTY(EditAnywhere, Category="Score|Tolerances") float SinkFullFPM = 200.f;
 	UPROPERTY(EditAnywhere, Category="Score|Tolerances") float SinkZeroFPM = 1000.f;

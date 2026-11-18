@@ -112,20 +112,20 @@ void ULandingScoreComponent::Finish()
 	}
 	else
 	{
-		const float Tracking01 = (Result.LocalizerTrackingPct + Result.GlideslopeTrackingPct) / 200.f;
+		Result.TrackingRatio   = (Result.LocalizerTrackingPct + Result.GlideslopeTrackingPct) / 200.f;
+		Result.SinkRatio       = Score01(Result.SinkRateFPM, SinkFullFPM, SinkZeroFPM);
+		Result.ZoneRatio       = Score01(FMath::Abs(Result.DistanceFromAimPointM), ZoneFullM, ZoneZeroM);
+		Result.CenterlineRatio = Score01(FMath::Abs(Result.CenterlineOffsetM), CenterFullM, CenterZeroM);
+		Result.SpeedRatio      = Score01(FMath::Abs(Result.TouchdownSpeedKt - TargetTouchdownKt), SpeedFullKt, SpeedZeroKt);
 
-		Result.TrackingPoints   = FMath::RoundToInt(MaxTrackingPoints * Tracking01);
-		Result.SinkRatePoints   = FMath::RoundToInt(MaxSinkRatePoints *
-			Score01(Result.SinkRateFPM, SinkFullFPM, SinkZeroFPM));
-		Result.ZonePoints       = FMath::RoundToInt(MaxZonePoints *
-			Score01(FMath::Abs(Result.DistanceFromAimPointM), ZoneFullM, ZoneZeroM));
-		Result.CenterlinePoints = FMath::RoundToInt(MaxCenterlinePoints *
-			Score01(FMath::Abs(Result.CenterlineOffsetM), CenterFullM, CenterZeroM));
-		Result.SpeedPoints      = FMath::RoundToInt(MaxSpeedPoints *
-			Score01(FMath::Abs(Result.TouchdownSpeedKt - TargetTouchdownKt), SpeedFullKt, SpeedZeroKt));
+		Result.TrackingPoints   = FMath::RoundToInt(MaxTrackingPoints   * Result.TrackingRatio);
+		Result.SinkRatePoints   = FMath::RoundToInt(MaxSinkRatePoints   * Result.SinkRatio);
+		Result.ZonePoints       = FMath::RoundToInt(MaxZonePoints       * Result.ZoneRatio);
+		Result.CenterlinePoints = FMath::RoundToInt(MaxCenterlinePoints * Result.CenterlineRatio);
+		Result.SpeedPoints      = FMath::RoundToInt(MaxSpeedPoints      * Result.SpeedRatio);
 
 		Result.TotalScore = Result.TrackingPoints + Result.SinkRatePoints + Result.ZonePoints
-		                  + Result.CenterlinePoints + Result.SpeedPoints;
+						  + Result.CenterlinePoints + Result.SpeedPoints;
 		Result.Grade = GradeFor(Result.TotalScore);
 	}
 
@@ -147,7 +147,5 @@ void ULandingScoreComponent::Finish()
 			Result.TouchdownSpeedKt, Result.SpeedPoints);
 
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *Report);
-	if (GEngine) GEngine->AddOnScreenDebugMessage(3, 30.f, FColor::Green, Report);
-
 	OnLandingScored.Broadcast(Result);
 }

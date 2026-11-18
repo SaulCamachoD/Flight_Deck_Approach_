@@ -74,6 +74,7 @@ public:
 	UFUNCTION(BlueprintPure) float GetHeadingDeg() const { return FRotator::ClampAxis(GetActorRotation().Yaw); }   // 0..360
 	UFUNCTION(BlueprintPure) float GetThrottleTarget() const { return ThrottleTarget; }
 	virtual FVector GetVelocity() const override { return Velocity; }
+	void SetInstrumentsVisible(bool bVisible);
 	
 	
 	//Flight State
@@ -88,6 +89,9 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	
+	virtual void NotifyControllerChanged() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
 	// --- Componentes ---
 	UPROPERTY(VisibleAnywhere) USpringArmComponent* SpringArm;
@@ -162,5 +166,8 @@ private:
 	float DebugQ = 0.f;
 	float DebugSinAoA = 0.f;
 	float DebugSpeed = 0.f;
+	
+	void SetupForController();
 
+	UPROPERTY() TObjectPtr<class UFlightInstrumentWidget> InstrumentsWidget;
 };

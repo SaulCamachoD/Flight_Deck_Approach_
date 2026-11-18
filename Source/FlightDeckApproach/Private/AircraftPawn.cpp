@@ -51,6 +51,14 @@ AAircraftPawn::AAircraftPawn()
 
 }
 
+void AAircraftPawn::SetInstrumentsVisible(bool bVisible)
+{
+    if (InstrumentsWidget)
+    {
+        InstrumentsWidget->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible: ESlateVisibility::Collapsed);
+    }
+}
+
 // Called when the game starts or when spawned
 void AAircraftPawn::BeginPlay()
 {
@@ -67,26 +75,55 @@ void AAircraftPawn::BeginPlay()
     
     ThrottleTarget = Throttle;
     
-    if (APlayerController* PC = Cast<APlayerController>(GetController()))
+    SetupForController();
+	
+}
+
+void AAircraftPawn::NotifyControllerChanged()
+{
+    Super::NotifyControllerChanged();
+
+    // En el Retry, BeginPlay corre ANTES de poseer: aquí llega el controller
+    if (HasActorBegunPlay())
     {
-        if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
-            ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+        SetupForController();
+    }
+}
+
+void AAircraftPawn::SetupForController()
+{
+    APlayerController* PC = Cast<APlayerController>(GetController());
+    if (!PC) return;   // también se llama al hacer UnPossess, con controller nulo
+
+    if (UEnhancedInputLocalPlayerSubsystem* Subsystem =
+        ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
+    {
+        if (FlightMappingContext)
         {
-            if (FlightMappingContext)
-            {
-                Subsystem->AddMappingContext(FlightMappingContext, 0);
-            }
-        }
-        
-        if (InstrumentsWidgetClass)
-        {
-            if (UFlightInstrumentWidget* W = CreateWidget<UFlightInstrumentWidget>(PC, InstrumentsWidgetClass))
-            {
-                W->AddToViewport();
-            }
+            Subsystem->AddMappingContext(FlightMappingContext, 0);
         }
     }
-	
+
+    // Solo un HUD por avión
+    if (InstrumentsWidgetClass && !InstrumentsWidget)
+    {
+        InstrumentsWidget = CreateWidget<UFlightInstrumentWidget>(PC, InstrumentsWidgetClass);
+        if (InstrumentsWidget)
+        {
+            InstrumentsWidget->AddToViewport();
+        }
+    }
+}
+
+void AAircraftPawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+    // Al destruir el avión (Retry) se va su HUD con él
+    if (InstrumentsWidget)
+    {
+        InstrumentsWidget->RemoveFromParent();
+        InstrumentsWidget = nullptr;
+    }
+    Super::EndPlay(EndPlayReason);
 }
 
 bool AAircraftPawn::IsRunway(const FHitResult& Hit) const
