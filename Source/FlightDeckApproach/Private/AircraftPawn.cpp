@@ -14,6 +14,7 @@
 #include "Engine/Engine.h"
 #include "DrawDebugHelpers.h"
 #include "FlightInstrumentWidget.h"
+#include "WindSubsystem.h"
 #include "LandingScoreComponent.h"
 #include "Blueprint/UserWidget.h"
 
@@ -72,6 +73,11 @@ void AAircraftPawn::BeginPlay()
     FRotator PathRot = StartRot;
     PathRot.Pitch = StartFlightPathDeg;
     Velocity = PathRot.Vector() * (StartSpeedKnots / 1.94384f) * 100.f;
+    
+    if (const UWindSubsystem* Wind = GetWorld()->GetSubsystem<UWindSubsystem>())
+    {
+        Velocity += Wind->GetWindVelocity();
+    }
     
     ThrottleTarget = Throttle;
     
@@ -194,8 +200,12 @@ void AAircraftPawn::ApplyFlightForces(float DeltaTime)
 	const FVector Fwd = GetActorForwardVector();
     const FVector Up  = GetActorUpVector();
 
-    // Velocidad en m/s para la aerodinámica (UE trabaja en cm)
-    const FVector VelMS = Velocity * 0.01f;
+    FVector WindMS = FVector::ZeroVector;
+    if (const UWindSubsystem* Wind = GetWorld()->GetSubsystem<UWindSubsystem>())
+    {
+        WindMS = Wind->GetWindVelocity() * 0.01f;
+    }
+    const FVector VelMS = Velocity * 0.01f - WindMS;
     const float Speed = VelMS.Size();
     DebugSpeed = Speed; 
     // --- Ángulo de ataque (AoA): ángulo entre el eje longitudinal y el vector velocidad,
@@ -242,11 +252,13 @@ void AAircraftPawn::ApplyFlightForces(float DeltaTime)
     }
     ForceN += FVector(0, 0, -9.81f * MassKg); // gravedad
 
-    // Viento del subsistema (ver Fase 3)
-    //if (UWindSubsystem* Wind = GetWorld()->GetSubsystem<UWindSubsystem>())
-    //{
-      //  ForceN += Wind->GetWindForceOn(MassKg, VelMS);
-    //}
+    // Fuerza lateral: si el aire te llega de lado (derrape), el fuselaje te empuja a alinearte
+    if (Speed > 1.f)
+    {
+        const FVector Right = GetActorRightVector();
+        const float SideSpeed = FVector::DotProduct(VelMS, Right);
+        ForceN -= Right * (Q * WingAreaM2 * SideForceCoefficient * (SideSpeed / Speed));
+    }    
 
     const FVector AccelMS2 = ForceN / MassKg;
 
@@ -301,25 +313,26 @@ void AAircraftPawn::ApplyRotationInput(float DeltaTime)
 
 void AAircraftPawn::ApplyGroundRoll(float DeltaTime)
 {
-    // Nivelar la actitud: el avión se asienta sobre el tren
+    // Nivelar la actitud y alinear el morro con la trayectoria (quita el crab al tocar)
     FRotator R = GetActorRotation();
     R.Pitch = FMath::FInterpTo(R.Pitch, 0.f, DeltaTime, 3.f);
     R.Roll  = FMath::FInterpTo(R.Roll,  0.f, DeltaTime, 3.f);
+    if (Velocity.SizeSquared2D() > 1.f)
+    {
+        // FixedTurn gira a velocidad constante y maneja el salto 359° → 0°
+        R.Yaw = FMath::FixedTurn(R.Yaw, Velocity.Rotation().Yaw, GroundAlignRateDeg * DeltaTime);
+    }
     SetActorRotation(R);
 
-    // Fricción de rodadura + frenos (usamos el throttle bajo como freno)
+    // Fricción de rodadura + frenos (throttle bajo = más freno)
     const float DecelMS2 = RollingFrictionMS2 + BrakeDecelMS2 * (1.f - Throttle);
-    const float SpeedCMS = Velocity.Size();
+    const float SpeedCMS = Velocity.Size2D();
     const float NewSpeed = FMath::Max(0.f, SpeedCMS - DecelMS2 * 100.f * DeltaTime);
 
-    Velocity = (SpeedCMS > 1.f) ? Velocity.GetSafeNormal() * NewSpeed : FVector::ZeroVector;
-
-    // Rodar en línea recta siguiendo el morro
     if (NewSpeed > 1.f)
     {
-        FVector Dir = GetActorForwardVector();
-        Dir.Z = 0.f;
-        Velocity = Dir.GetSafeNormal() * NewSpeed;
+        // Seguimos la trayectoria con la que tocamos: si tocaste derivando, sigues derivando
+        Velocity = Velocity.GetSafeNormal2D() * NewSpeed;
         AddActorWorldOffset(Velocity * DeltaTime, false);
         CheckStillOnRunway();
     }
@@ -367,7 +380,7 @@ void AAircraftPawn::Tick(float DeltaTime)
         break;
     }
     
-    if (GEngine)
+    if (GEngine && bShowDebugText)
     {
         const float WeightN = MassKg * 9.81f;
         const float LiftRatio = (WeightN > 0.f) ? DebugLiftN / WeightN : 0.f;
@@ -390,7 +403,7 @@ void AAircraftPawn::Tick(float DeltaTime)
                 *UEnum::GetValueAsString(State)));
     }
     
-    if (GEngine && ILS && ILS->IsSignalValid())
+    if (GEngine && bShowDebugText && ILS && ILS->IsSignalValid())
     {
         const float Loc = ILS->GetLocalizerDeviationDeg();
         const float GS  = ILS->GetGlideslopeDeviationDeg();
@@ -429,7 +442,19 @@ void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 
 float AAircraftPawn::GetAirspeedKnots() const
 {
-    return Velocity.Size() * 0.01f * 1.94384f;
+    // En vuelo, la velocidad que importa es respecto al aire (IAS)
+    FVector AirVel = Velocity;
+    if (State == EAircraftState::Airborne)
+    {
+        if (const UWorld* World = GetWorld())
+        {
+            if (const UWindSubsystem* Wind = World->GetSubsystem<UWindSubsystem>())
+            {
+                AirVel -= Wind->GetWindVelocity();
+            }
+        }
+    }
+    return AirVel.Size() * 0.01f * 1.94384f;
 }
 
 float AAircraftPawn::GetVerticalSpeedFPM() const

@@ -22,6 +22,17 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<ULandingReportWidget> ReportWidgetClass;
 	UPROPERTY(EditDefaultsOnly, Category="UI") float ReportDelaySeconds = 1.5f;
+	
+	// --- Viento ---
+	UPROPERTY(EditDefaultsOnly, Category="Wind") bool bRandomWind = true;
+	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="bRandomWind")) float MaxWindKt = 15.f;
+	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="bRandomWind")) float MaxGustKt = 8.f;
+	// Ángulo máximo entre el viento y el eje de pista. 90 = nunca viento de cola
+	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="bRandomWind")) float MaxWindAngleDeg = 90.f;
+
+	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="!bRandomWind")) float FixedWindFromDeg = 270.f;
+	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="!bRandomWind")) float FixedWindKt = 10.f;
+	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="!bRandomWind")) float FixedGustKt = 0.f;
 
 	// Vacío por ahora: el menú principal llega en la Fase 4
 	UPROPERTY(EditDefaultsOnly, Category="Flow") FName MainMenuLevelName;
@@ -29,7 +40,9 @@ protected:
 private:
 	UFUNCTION() void HandleLandingScored(const FLandingResult& Result);
 	void ShowReport();
-
+	
+	void ConfigureWind();
+	
 	UPROPERTY() TObjectPtr<ULandingReportWidget> ReportWidget;
 	FLandingResult PendingResult;
 	int32 BestScore = 0;   

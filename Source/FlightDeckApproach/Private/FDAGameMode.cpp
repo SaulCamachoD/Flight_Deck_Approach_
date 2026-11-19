@@ -1,13 +1,15 @@
 #include "FDAGameMode.h"
 #include "AircraftPawn.h"
 #include "LandingReportWidget.h"
+#include "WindSubsystem.h"
+#include "ILSTransmitter.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
 
 void AFDAGameMode::RestartPlayer(AController* NewPlayer)
 {
 	Super::RestartPlayer(NewPlayer);
-
+	ConfigureWind();  
 	const AAircraftPawn* Aircraft = NewPlayer ? Cast<AAircraftPawn>(NewPlayer->GetPawn()) : nullptr;
 	if (ULandingScoreComponent* Score = Aircraft ? Aircraft->GetLandingScore() : nullptr)
 	{
@@ -43,6 +45,32 @@ void AFDAGameMode::ShowReport()
 
 	PC->SetInputMode(FInputModeUIOnly());
 	PC->SetShowMouseCursor(true);
+}
+
+void AFDAGameMode::ConfigureWind()
+{
+	UWindSubsystem* Wind = GetWorld()->GetSubsystem<UWindSubsystem>();
+	if (!Wind) return;
+
+	if (!bRandomWind)
+	{
+		Wind->SetWind(FixedWindFromDeg, FixedWindKt, FixedGustKt);
+	}
+	else
+	{
+		// El eje de pista es el yaw del transmisor (aterrizamos hacia su +X)
+		float RunwayYaw = 0.f;
+		if (const AActor* T = UGameplayStatics::GetActorOfClass(this, AILSTransmitter::StaticClass()))
+		{
+			RunwayYaw = T->GetActorRotation().Yaw;
+		}
+		const float From = RunwayYaw + FMath::FRandRange(-MaxWindAngleDeg, MaxWindAngleDeg);
+		Wind->SetWind(From, FMath::FRandRange(0.f, MaxWindKt), FMath::FRandRange(0.f, MaxGustKt));
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("WIND %03.0f / %.0f KT  gust +%.0f"),
+		FRotator::ClampAxis(Wind->GetBaseFromDeg()), Wind->GetBaseSpeedKt(), Wind->GetGustKt());
+	
 }
 
 void AFDAGameMode::Retry()

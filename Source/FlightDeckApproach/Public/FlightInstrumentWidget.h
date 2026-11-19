@@ -53,6 +53,20 @@ protected:
 	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* AltitudeTape;
 	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* HeadingTape;
 	
+	// --- Viento ---
+	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* WindText;        // "270° 12G18 KT"
+	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* CrosswindText;   // "XW 8 KT R"
+	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* HeadwindText;    // "HW 10 KT"
+	UPROPERTY(meta=(BindWidgetOptional)) class UWidget* WindArrow;    // flecha apuntando ARRIBA en el WBP
+
+	// --- Approach score en vivo ---
+	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* ApproachScoreText;
+	UPROPERTY(meta=(BindWidgetOptional)) class UProgressBar* ApproachScoreBar;
+
+	UPROPERTY(EditAnywhere, Category="HUD|Colors") FLinearColor HudGreen = FLinearColor::FromSRGBColor(FColor(0x7C, 0xFF, 0xB0));
+	UPROPERTY(EditAnywhere, Category="HUD|Colors") FLinearColor HudAmber = FLinearColor::FromSRGBColor(FColor(0xFF, 0xA0, 0x40));
+	UPROPERTY(EditAnywhere, Category="HUD|Colors") FLinearColor HudRed   = FLinearColor::FromSRGBColor(FColor(0xFF, 0x40, 0x30));
+	
 	// fpm que llenan la barra entera (hacia arriba o hacia abajo)
 	UPROPERTY(EditAnywhere, Category="HUD|VSI") float VSIRangeFPM = 2000.f;
 	// Aviso si desciendes más rápido que esto por debajo de SinkRateMaxAltFt

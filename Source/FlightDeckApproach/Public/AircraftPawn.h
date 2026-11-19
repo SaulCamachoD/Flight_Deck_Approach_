@@ -73,6 +73,7 @@ public:
 	UFUNCTION(BlueprintPure) ULandingScoreComponent* GetLandingScore() const { return LandingScore; }
 	UFUNCTION(BlueprintPure) float GetHeadingDeg() const { return FRotator::ClampAxis(GetActorRotation().Yaw); }   // 0..360
 	UFUNCTION(BlueprintPure) float GetThrottleTarget() const { return ThrottleTarget; }
+	UFUNCTION(BlueprintPure) float GetGroundSpeedKnots() const { return Velocity.Size2D() * 0.01f * 1.94384f; }
 	virtual FVector GetVelocity() const override { return Velocity; }
 	void SetInstrumentsVisible(bool bVisible);
 	
@@ -108,6 +109,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float InducedDragFactor = 0.08f;
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float WingAreaM2 = 50.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Forces") float MassKg = 2000.f;
+	
+	// Fuerza lateral del fuselaje: alinea poco a poco la trayectoria con el morro tras una ráfaga
+	UPROPERTY(EditAnywhere, Category="Flight|Aero") float SideForceCoefficient = 0.5f;
+	
 
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float PitchRateDeg = 25.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Handling") float RollRateDeg = 60.f;
@@ -119,6 +124,7 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Flight|Start") float StartPitchDeg = -2.2f;
 	
 	UPROPERTY(EditAnywhere, Category="Debug") bool bDrawDebug = false;
+	UPROPERTY(EditAnywhere, Category="Debug") bool bShowDebugText = false;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputMappingContext* FlightMappingContext;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* PitchAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* RollAction;
@@ -126,6 +132,7 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Flight|Ground") float BrakeDecelMS2 = 4.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Ground") float RollingFrictionMS2 = 0.8f;
+	UPROPERTY(EditAnywhere, Category="Flight|Ground") float GroundAlignRateDeg = 10.f;
 	
 	// --- Límites de aterrizaje ---
 	UPROPERTY(EditAnywhere, Category="Flight|Landing") FName RunwayTag = TEXT("Runway");
