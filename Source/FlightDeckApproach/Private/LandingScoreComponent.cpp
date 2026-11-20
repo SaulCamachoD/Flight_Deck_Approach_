@@ -129,7 +129,7 @@ void ULandingScoreComponent::Finish()
 		Result.Grade = GradeFor(Result.TotalScore);
 	}
 
-	// Temporal hasta que exista el Landing Report (Parte 14)
+	// Resumen en el Output Log (el jugador lo ve en el Landing Report)
 	const FString Report = Result.bCrashed
 		? FString::Printf(TEXT("CRASH: %s"), *UEnum::GetValueAsString(Result.CrashReason))
 		: FString::Printf(TEXT(

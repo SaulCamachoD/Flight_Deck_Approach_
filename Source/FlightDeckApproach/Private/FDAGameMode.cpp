@@ -8,8 +8,8 @@
 
 void AFDAGameMode::RestartPlayer(AController* NewPlayer)
 {
+	ConfigureWind();
 	Super::RestartPlayer(NewPlayer);
-	ConfigureWind();  
 	const AAircraftPawn* Aircraft = NewPlayer ? Cast<AAircraftPawn>(NewPlayer->GetPawn()) : nullptr;
 	if (ULandingScoreComponent* Score = Aircraft ? Aircraft->GetLandingScore() : nullptr)
 	{

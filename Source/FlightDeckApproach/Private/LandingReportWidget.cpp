@@ -57,7 +57,9 @@ FString ULandingReportWidget::CrashReasonToString(ECrashReason Reason)
 	case ECrashReason::NoseFirst:       return TEXT("NOSE-FIRST TOUCHDOWN");
 	case ECrashReason::RunwayExcursion: return TEXT("RUNWAY EXCURSION");
 	case ECrashReason::Collision:       return TEXT("TERRAIN COLLISION");
+	case ECrashReason::OutOfBounds:     return TEXT("LEFT APPROACH AREA");	
 	default:                            return TEXT("CRASH");
+		
 	}
 }
 

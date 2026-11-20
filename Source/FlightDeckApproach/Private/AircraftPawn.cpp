@@ -17,6 +17,7 @@
 #include "WindSubsystem.h"
 #include "LandingScoreComponent.h"
 #include "Blueprint/UserWidget.h"
+#include "ILSTransmitter.h"
 
 // Sets default values
 AAircraftPawn::AAircraftPawn()
@@ -192,6 +193,30 @@ void AAircraftPawn::CheckStillOnRunway()
     if (!bHit || !IsRunway(Hit))
     {
         Crash(ECrashReason::RunwayExcursion);
+    }
+}
+
+void AAircraftPawn::CheckOutOfBounds()
+{
+    // Por debajo del mundo: no hubo suelo que nos detuviera
+    if (GetActorLocation().Z < MinWorldZ)
+    {
+        Crash(ECrashReason::OutOfBounds);
+        return;
+    }
+
+    const AILSTransmitter* T = ILS ? ILS->GetTransmitter() : nullptr;
+    if (!T) return;
+
+    // Espacio de la pista (el del transmisor en el umbral): X = cm pasado el umbral, Y = cm laterales
+    const FVector Local = T->GetActorTransform().InverseTransformPosition(GetActorLocation());
+
+    const bool bPastRunway = Local.X > RunwayLengthM * 100.f;                              // pasó el final sin tocar
+    const bool bTooFar     = FVector2D(Local.X, Local.Y).Size() > MaxDistanceNM * 185200.f; // 1 NM = 185200 cm
+
+    if (bPastRunway || bTooFar)
+    {
+        Crash(ECrashReason::OutOfBounds);
     }
 }
 
@@ -372,6 +397,8 @@ void AAircraftPawn::Tick(float DeltaTime)
     case EAircraftState::Airborne:
         ApplyRotationInput(DeltaTime);
         ApplyFlightForces(DeltaTime);
+        // ApplyFlightForces puede haber cambiado el estado (toque o choque)
+        if (State == EAircraftState::Airborne) CheckOutOfBounds();
         break;
     case EAircraftState::Rolling:
         ApplyGroundRoll(DeltaTime);

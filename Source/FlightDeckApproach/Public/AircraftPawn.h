@@ -13,7 +13,8 @@ enum class ECrashReason : uint8
 	ExcessiveBank,
 	NoseFirst,
 	RunwayExcursion,
-	Collision	
+	Collision,
+	OutOfBounds	
 };
 
 
@@ -140,12 +141,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Flight|Landing") float MaxTouchdownBankDeg = 10.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Landing") float MinTouchdownPitchDeg = -2.f;
 	
+	// Límites de la aproximación: fuera de aquí el intento termina
+	UPROPERTY(EditAnywhere, Category="Flight|Bounds") float RunwayLengthM = 3000.f;   // pasarla en el aire = fin
+	UPROPERTY(EditAnywhere, Category="Flight|Bounds") float MaxDistanceNM = 7.f;      // radio desde el umbral
+	UPROPERTY(EditAnywhere, Category="Flight|Bounds") float MinWorldZ = -10000.f;     // cayendo fuera del mapa
+	
 	UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<class UFlightInstrumentWidget> InstrumentsWidgetClass;
 	
 	bool IsRunway(const FHitResult& Hit) const;
 	void HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset);
 	void Crash(ECrashReason Reason);
 	void CheckStillOnRunway();
+	void CheckOutOfBounds();
 
 private:	
 	// Estado
