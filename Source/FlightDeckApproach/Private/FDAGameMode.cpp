@@ -4,6 +4,7 @@
 #include "WindSubsystem.h"
 #include "ILSTransmitter.h"
 #include "Kismet/GameplayStatics.h"
+#include "FDASaveGame.h"
 #include "TimerManager.h"
 
 void AFDAGameMode::RestartPlayer(AController* NewPlayer)
@@ -14,6 +15,19 @@ void AFDAGameMode::RestartPlayer(AController* NewPlayer)
 	if (ULandingScoreComponent* Score = Aircraft ? Aircraft->GetLandingScore() : nullptr)
 	{
 		Score->OnLandingScored.AddUniqueDynamic(this, &AFDAGameMode::HandleLandingScored);
+	}
+}
+
+void AFDAGameMode::BeginPlay()
+{
+	Super::BeginPlay();
+	BestScore = UFDASaveGame::LoadBestScore();
+
+	// Si venimos del menú, la entrada quedó en modo UI: devolvérsela al juego
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->SetShowMouseCursor(false);
 	}
 }
 
@@ -33,7 +47,11 @@ void AFDAGameMode::ShowReport()
 	if (!ReportWidget) return;
 
 	const bool bNewBest = !PendingResult.bCrashed && PendingResult.TotalScore > BestScore;
-	if (bNewBest) BestScore = PendingResult.TotalScore;
+	if (bNewBest)
+	{
+		BestScore = PendingResult.TotalScore;
+		UFDASaveGame::SaveBestScore(BestScore);
+	}
 	ReportWidget->SetResult(PendingResult, bNewBest);
 	
 	if (AAircraftPawn* Aircraft = Cast<AAircraftPawn>(PC->GetPawn()))

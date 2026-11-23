@@ -15,7 +15,7 @@ class FLIGHTDECKAPPROACH_API AFDAGameMode : public AGameModeBase
 public:
 	// Se llama al inicio y en cada Retry: aquí nos suscribimos al puntaje del avión nuevo
 	virtual void RestartPlayer(AController* NewPlayer) override;
-
+	virtual void BeginPlay() override;
 	UFUNCTION(BlueprintCallable, Category="Flow") void Retry();
 	UFUNCTION(BlueprintCallable, Category="Flow") void GoToMainMenu();
 
@@ -34,7 +34,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="!bRandomWind")) float FixedWindKt = 10.f;
 	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="!bRandomWind")) float FixedGustKt = 0.f;
 
-	// Vacío por ahora: el menú principal llega en la Fase 4
+	// Nombre del nivel del menú (ej. MainMenu). Vacío = el botón hace Retry
 	UPROPERTY(EditDefaultsOnly, Category="Flow") FName MainMenuLevelName;
 
 private:
