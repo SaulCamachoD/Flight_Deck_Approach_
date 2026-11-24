@@ -7,20 +7,46 @@ namespace
 	const TCHAR* SlotName = TEXT("FlightDeckApproach");
 }
 
+UFDASaveGame* UFDASaveGame::LoadOrCreate()
+{
+	if (UFDASaveGame* Save = Cast<UFDASaveGame>(UGameplayStatics::LoadGameFromSlot(SlotName, 0)))
+	{
+		return Save;
+	}
+	return Cast<UFDASaveGame>(UGameplayStatics::CreateSaveGameObject(StaticClass()));
+}
+
+void UFDASaveGame::Write()
+{
+	UGameplayStatics::SaveGameToSlot(this, SlotName, 0);
+}
+
 int32 UFDASaveGame::LoadBestScore()
 {
-	if (const UFDASaveGame* Save = Cast<UFDASaveGame>(UGameplayStatics::LoadGameFromSlot(SlotName, 0)))
-	{
-		return Save->BestScore;
-	}
-	return 0;   // primera vez: no hay archivo
+	const UFDASaveGame* Save = LoadOrCreate();
+	return Save ? Save->BestScore : 0;
 }
 
 void UFDASaveGame::SaveBestScore(int32 Score)
 {
-	if (UFDASaveGame* Save = Cast<UFDASaveGame>(UGameplayStatics::CreateSaveGameObject(StaticClass())))
+	if (UFDASaveGame* Save = LoadOrCreate())
 	{
-		Save->BestScore = Score;
-		UGameplayStatics::SaveGameToSlot(Save, SlotName, 0);
+		Save->BestScore = Score;   // el resto de datos se conserva
+		Save->Write();
+	}
+}
+
+EWindPreset UFDASaveGame::LoadWindPreset()
+{
+	const UFDASaveGame* Save = LoadOrCreate();
+	return Save ? Save->WindPreset : EWindPreset::Random;
+}
+
+void UFDASaveGame::SaveWindPreset(EWindPreset Preset)
+{
+	if (UFDASaveGame* Save = LoadOrCreate())
+	{
+		Save->WindPreset = Preset;
+		Save->Write();
 	}
 }

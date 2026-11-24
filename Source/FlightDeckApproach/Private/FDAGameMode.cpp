@@ -70,20 +70,40 @@ void AFDAGameMode::ConfigureWind()
 	UWindSubsystem* Wind = GetWorld()->GetSubsystem<UWindSubsystem>();
 	if (!Wind) return;
 
-	if (!bRandomWind)
+	// El eje de pista es el yaw del transmisor (aterrizamos hacia su +X)
+	float RunwayYaw = 0.f;
+	if (const AActor* T = UGameplayStatics::GetActorOfClass(this, AILSTransmitter::StaticClass()))
 	{
-		Wind->SetWind(FixedWindFromDeg, FixedWindKt, FixedGustKt);
+		RunwayYaw = T->GetActorRotation().Yaw;
 	}
-	else
+
+	switch (UFDASaveGame::LoadWindPreset())
 	{
-		// El eje de pista es el yaw del transmisor (aterrizamos hacia su +X)
-		float RunwayYaw = 0.f;
-		if (const AActor* T = UGameplayStatics::GetActorOfClass(this, AILSTransmitter::StaticClass()))
+	case EWindPreset::Calm:
+		Wind->SetWind(RunwayYaw, 0.f, 0.f);
+		break;
+
+	case EWindPreset::Crosswind:
+		// Directo de un costado (izquierda o derecha al azar), sin ráfagas
+		Wind->SetWind(RunwayYaw + (FMath::RandBool() ? 90.f : -90.f), FMath::FRandRange(10.f, 15.f), 0.f);
+		break;
+
+	case EWindPreset::Gusty:
+		Wind->SetWind(RunwayYaw + FMath::FRandRange(-45.f, 45.f),
+			FMath::FRandRange(12.f, 18.f), FMath::FRandRange(8.f, 12.f));
+		break;
+
+	default: // Random: lo que diga BP_FDAGameMode (aleatorio, o fijo para pruebas)
+		if (bRandomWind)
 		{
-			RunwayYaw = T->GetActorRotation().Yaw;
+			const float From = RunwayYaw + FMath::FRandRange(-MaxWindAngleDeg, MaxWindAngleDeg);
+			Wind->SetWind(From, FMath::FRandRange(0.f, MaxWindKt), FMath::FRandRange(0.f, MaxGustKt));
 		}
-		const float From = RunwayYaw + FMath::FRandRange(-MaxWindAngleDeg, MaxWindAngleDeg);
-		Wind->SetWind(From, FMath::FRandRange(0.f, MaxWindKt), FMath::FRandRange(0.f, MaxGustKt));
+		else
+		{
+			Wind->SetWind(FixedWindFromDeg, FixedWindKt, FixedGustKt);
+		}
+		break;
 	}
 
 	UE_LOG(LogTemp, Warning, TEXT("WIND %03.0f / %.0f KT  gust +%.0f"),

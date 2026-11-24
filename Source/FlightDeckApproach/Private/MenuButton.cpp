@@ -22,7 +22,7 @@ void UMenuButton::NativeConstruct()
 
 void UMenuButton::HandleClicked()   { OnClicked.Broadcast(); }
 void UMenuButton::HandleHovered()   { SetHighlight(true); }
-void UMenuButton::HandleUnhovered() { SetHighlight(false); }
+void UMenuButton::HandleUnhovered() { SetHighlight(bSelected); }
 
 void UMenuButton::SetHighlight(bool bOn)
 {
@@ -31,4 +31,9 @@ void UMenuButton::SetHighlight(bool bOn)
 	const ESlateVisibility Vis = bOn ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden;
 	if (Arrow)     Arrow->SetVisibility(Vis);
 	if (AccentBar) AccentBar->SetVisibility(Vis);
+}
+void UMenuButton::SetSelected(bool bInSelected)
+{
+	bSelected = bInSelected;
+	SetHighlight(bSelected);
 }

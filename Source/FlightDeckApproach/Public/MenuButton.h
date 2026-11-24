@@ -17,6 +17,7 @@ class FLIGHTDECKAPPROACH_API UMenuButton : public UUserWidget
 
 public:
 	UPROPERTY(BlueprintAssignable, Category="Menu") FOnMenuButtonClicked OnClicked;
+	void SetSelected(bool bInSelected);
 
 protected:
 	virtual void NativePreConstruct() override;
@@ -36,5 +37,6 @@ private:
 	UFUNCTION() void HandleClicked();
 	UFUNCTION() void HandleHovered();
 	UFUNCTION() void HandleUnhovered();
+	bool bSelected = false;
 	void SetHighlight(bool bOn);
 };
