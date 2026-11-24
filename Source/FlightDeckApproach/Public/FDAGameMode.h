@@ -6,6 +6,7 @@
 #include "FDAGameMode.generated.h"
 
 class ULandingReportWidget;
+class UPauseMenuWidget;
 
 UCLASS()
 class FLIGHTDECKAPPROACH_API AFDAGameMode : public AGameModeBase
@@ -18,10 +19,13 @@ public:
 	virtual void BeginPlay() override;
 	UFUNCTION(BlueprintCallable, Category="Flow") void Retry();
 	UFUNCTION(BlueprintCallable, Category="Flow") void GoToMainMenu();
+	void TogglePause();
+	void ResumeGame();
 
 protected:
 	UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<ULandingReportWidget> ReportWidgetClass;
 	UPROPERTY(EditDefaultsOnly, Category="UI") float ReportDelaySeconds = 1.5f;
+	UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<UPauseMenuWidget> PauseWidgetClass;
 	
 	// --- Viento ---
 	UPROPERTY(EditDefaultsOnly, Category="Wind") bool bRandomWind = true;
@@ -42,7 +46,9 @@ private:
 	void ShowReport();
 	
 	void ConfigureWind();
+	void ClosePauseMenu();
 	
+	UPROPERTY() TObjectPtr<UPauseMenuWidget> PauseWidget;
 	UPROPERTY() TObjectPtr<ULandingReportWidget> ReportWidget;
 	FLandingResult PendingResult;
 	int32 BestScore = 0;   

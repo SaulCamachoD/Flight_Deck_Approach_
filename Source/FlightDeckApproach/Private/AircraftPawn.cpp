@@ -17,6 +17,7 @@
 #include "WindSubsystem.h"
 #include "LandingScoreComponent.h"
 #include "Blueprint/UserWidget.h"
+#include "FDAGameMode.h"
 #include "ILSTransmitter.h"
 
 // Sets default values
@@ -386,7 +387,14 @@ void AAircraftPawn::OnThrottle(const FInputActionValue& Value)
     ThrottleTarget = FMath::Clamp(ThrottleTarget + Value.Get<float>() * ThrottleRatePerSec * Dt, 0.f, 1.f);
 }
 
-// Called every frame
+void AAircraftPawn::OnPause()
+{
+    if (AFDAGameMode* GM = GetWorld()->GetAuthGameMode<AFDAGameMode>())
+    {
+        GM->TogglePause();
+    }
+}
+
 void AAircraftPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -463,6 +471,11 @@ void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
         EIC->BindAction(RollAction, ETriggerEvent::Completed, this, &AAircraftPawn::OnRoll);
 
         EIC->BindAction(ThrottleAction, ETriggerEvent::Triggered, this, &AAircraftPawn::OnThrottle);
+        
+        if (PauseAction)
+        {
+            EIC->BindAction(PauseAction, ETriggerEvent::Started, this, &AAircraftPawn::OnPause);
+        }
     }
 
 }

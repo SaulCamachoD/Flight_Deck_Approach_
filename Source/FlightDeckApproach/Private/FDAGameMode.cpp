@@ -6,6 +6,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "FDASaveGame.h"
 #include "TimerManager.h"
+#include "PauseMenuWidget.h"
 
 void AFDAGameMode::RestartPlayer(AController* NewPlayer)
 {
@@ -112,7 +113,8 @@ void AFDAGameMode::ConfigureWind()
 }
 
 void AFDAGameMode::Retry()
-{
+{	
+	ClosePauseMenu();
 	GetWorldTimerManager().ClearTimer(ReportTimer);
 	if (ReportWidget)
 	{
@@ -136,7 +138,8 @@ void AFDAGameMode::Retry()
 }
 
 void AFDAGameMode::GoToMainMenu()
-{
+{	
+	ClosePauseMenu();
 	if (MainMenuLevelName.IsNone())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("FDAGameMode: MainMenuLevelName vacío, hago Retry"));
@@ -144,4 +147,48 @@ void AFDAGameMode::GoToMainMenu()
 		return;
 	}
 	UGameplayStatics::OpenLevel(this, MainMenuLevelName);
+}
+
+void AFDAGameMode::TogglePause()
+{
+	if (PauseWidget) { ResumeGame(); return; }
+
+	// Si el intento ya terminó (reporte en pantalla o en camino) no hay pausa
+	if (ReportWidget || GetWorldTimerManager().IsTimerActive(ReportTimer)) return;
+
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	if (!PC || !PauseWidgetClass) return;
+
+	PauseWidget = CreateWidget<UPauseMenuWidget>(PC, PauseWidgetClass);
+	if (!PauseWidget) return;
+	PauseWidget->AddToViewport(20);   // encima del HUD y del reporte
+
+	PC->FlushPressedKeys();           // que no se quede "pegado" el pitch/roll al volver
+	UGameplayStatics::SetGamePaused(this, true);
+
+	FInputModeUIOnly Mode;
+	Mode.SetWidgetToFocus(PauseWidget->TakeWidget());
+	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	PC->SetInputMode(Mode);
+	PC->SetShowMouseCursor(true);
+}
+
+void AFDAGameMode::ResumeGame()
+{
+	ClosePauseMenu();
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		PC->SetInputMode(FInputModeGameOnly());
+		PC->SetShowMouseCursor(false);
+	}
+}
+
+void AFDAGameMode::ClosePauseMenu()
+{
+	if (PauseWidget)
+	{
+		PauseWidget->RemoveFromParent();
+		PauseWidget = nullptr;
+	}
+	UGameplayStatics::SetGamePaused(this, false);
 }

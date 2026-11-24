@@ -130,6 +130,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* PitchAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* RollAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* ThrottleAction;
+	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* PauseAction;
 
 	UPROPERTY(EditAnywhere, Category="Flight|Ground") float BrakeDecelMS2 = 4.f;
 	UPROPERTY(EditAnywhere, Category="Flight|Ground") float RollingFrictionMS2 = 0.8f;
@@ -169,7 +170,7 @@ private:
 	void OnPitch(const FInputActionValue& Value);
 	void OnRoll(const FInputActionValue& Value);
 	void OnThrottle(const FInputActionValue& Value);
-	
+	void OnPause();
 	
 	// --- Debug / telemetría interna ---
 	float DebugAoA = 0.f;
