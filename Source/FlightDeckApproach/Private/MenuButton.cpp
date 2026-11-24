@@ -37,3 +37,9 @@ void UMenuButton::SetSelected(bool bInSelected)
 	bSelected = bInSelected;
 	SetHighlight(bSelected);
 }
+
+void UMenuButton::SetLabel(const FText& InText)
+{
+	Text = InText;
+	if (Label) Label->SetText(Text);
+}

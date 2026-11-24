@@ -50,7 +50,7 @@ void AFDAGameMode::ShowReport()
 	if (bNewBest)
 	{
 		BestScore = PendingResult.TotalScore;
-		UFDASaveGame::SaveBestScore(BestScore);
+		UFDASaveGame::SaveBest(PendingResult);  
 	}
 	ReportWidget->SetResult(PendingResult, bNewBest);
 	

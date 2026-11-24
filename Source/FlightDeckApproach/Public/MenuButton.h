@@ -18,6 +18,7 @@ class FLIGHTDECKAPPROACH_API UMenuButton : public UUserWidget
 public:
 	UPROPERTY(BlueprintAssignable, Category="Menu") FOnMenuButtonClicked OnClicked;
 	void SetSelected(bool bInSelected);
+	void SetLabel(const FText& InText);
 
 protected:
 	virtual void NativePreConstruct() override;

@@ -17,6 +17,7 @@ class FLIGHTDECKAPPROACH_API ULandingReportWidget : public UUserWidget
 
 public:
 	void SetResult(const FLandingResult& Result, bool bNewBest);
+	static FString LetterFor(const FString& Grade);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -74,6 +75,5 @@ private:
 	            const FString& ValueStr, float Ratio, int32 Points) const;
 	FLinearColor ColorFor(float Ratio) const;
 	static FString WordFor(float Ratio);
-	static FString LetterFor(const FString& Grade);
 	static FString CrashReasonToString(ECrashReason Reason);
 };

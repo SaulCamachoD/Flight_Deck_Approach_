@@ -27,12 +27,14 @@ int32 UFDASaveGame::LoadBestScore()
 	return Save ? Save->BestScore : 0;
 }
 
-void UFDASaveGame::SaveBestScore(int32 Score)
+void UFDASaveGame::SaveBest(const FLandingResult& Result)
 {
 	if (UFDASaveGame* Save = LoadOrCreate())
 	{
-		Save->BestScore = Score;   // el resto de datos se conserva
-		Save->Write();
+		Save->BestScore  = Result.TotalScore;
+		Save->BestResult = Result;
+		Save->BestDate   = FDateTime::Now();
+		Save->Write();   // el preset de viento se conserva
 	}
 }
 
@@ -47,6 +49,27 @@ void UFDASaveGame::SaveWindPreset(EWindPreset Preset)
 	if (UFDASaveGame* Save = LoadOrCreate())
 	{
 		Save->WindPreset = Preset;
+		Save->Write();
+	}
+}
+
+bool UFDASaveGame::LoadBest(FLandingResult& OutResult, FDateTime& OutDate)
+{
+	const UFDASaveGame* Save = LoadOrCreate();
+	if (!Save || Save->BestScore <= 0) return false;
+
+	OutResult = Save->BestResult;
+	OutDate   = Save->BestDate;
+	return true;
+}
+
+void UFDASaveGame::ResetBest()
+{
+	if (UFDASaveGame* Save = LoadOrCreate())
+	{
+		Save->BestScore  = 0;
+		Save->BestResult = FLandingResult();
+		Save->BestDate   = FDateTime();
 		Save->Write();
 	}
 }

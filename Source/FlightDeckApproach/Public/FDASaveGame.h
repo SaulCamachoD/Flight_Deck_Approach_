@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/SaveGame.h"
+#include "LandingScoreComponent.h"   // FLandingResult
 #include "FDASaveGame.generated.h"
 
 UENUM(BlueprintType)
@@ -21,10 +22,14 @@ class FLIGHTDECKAPPROACH_API UFDASaveGame : public USaveGame
 
 public:
 	UPROPERTY() int32 BestScore = 0;
+	UPROPERTY() FLandingResult BestResult;   // desglose completo del mejor aterrizaje
+	UPROPERTY() FDateTime BestDate;
 	UPROPERTY() EWindPreset WindPreset = EWindPreset::Random;
 
 	static int32 LoadBestScore();
-	static void SaveBestScore(int32 Score);
+	static bool LoadBest(FLandingResult& OutResult, FDateTime& OutDate);   // false = todavía no hay
+	static void SaveBest(const FLandingResult& Result);
+	static void ResetBest();
 
 	static EWindPreset LoadWindPreset();
 	static void SaveWindPreset(EWindPreset Preset);
