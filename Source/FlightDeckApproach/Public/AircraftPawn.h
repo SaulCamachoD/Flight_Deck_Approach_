@@ -14,7 +14,8 @@ enum class ECrashReason : uint8
 	NoseFirst,
 	RunwayExcursion,
 	Collision,
-	OutOfBounds	
+	OutOfBounds,
+	GearUp
 };
 
 
@@ -51,6 +52,8 @@ class ULandingScoreComponent;
 struct FInputActionValue;
 class USkeletalMeshComponent;
 class UILSComponent;
+class UParticleSystemComponent;
+class UPointLightComponent;
 
 UCLASS()
 class FLIGHTDECKAPPROACH_API AAircraftPawn : public APawn
@@ -75,6 +78,14 @@ public:
 	UFUNCTION(BlueprintPure) float GetHeadingDeg() const { return FRotator::ClampAxis(GetActorRotation().Yaw); }   // 0..360
 	UFUNCTION(BlueprintPure) float GetThrottleTarget() const { return ThrottleTarget; }
 	UFUNCTION(BlueprintPure) float GetGroundSpeedKnots() const { return Velocity.Size2D() * 0.01f * 1.94384f; }
+	
+	// --- Tren y mandos (para el AnimBP y el HUD) ---
+	UFUNCTION(BlueprintPure) float GetGearExtension() const { return GearExtension; }   // 0 = arriba, 1 = abajo
+	UFUNCTION(BlueprintPure) bool IsGearDown() const { return GearExtension >= 1.f; }
+	UFUNCTION(BlueprintPure) bool IsGearMoving() const { return GearExtension != (bGearCommandDown ? 1.f : 0.f); }
+	UFUNCTION(BlueprintPure) float GetPitchInput() const { return PitchInput; }
+	UFUNCTION(BlueprintPure) float GetRollInput() const { return RollInput; }
+	
 	virtual FVector GetVelocity() const override { return Velocity; }
 	void SetInstrumentsVisible(bool bVisible);
 	
@@ -99,6 +110,24 @@ protected:
 	UPROPERTY(VisibleAnywhere) USpringArmComponent* SpringArm;
 	UPROPERTY(VisibleAnywhere) UCameraComponent* Camera;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Aircraft") TObjectPtr<USkeletalMeshComponent> AirframeMesh;
+	
+	// Llamas de las toberas (FX_Engine_01_F18C), pegadas a los huesos de las toberas
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|FX") UParticleSystemComponent* EngineFlameL;
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|FX") UParticleSystemComponent* EngineFlameR;
+	
+	// Luz de cada tobera: se ve desde atrás, donde la llama queda de canto
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|FX") UPointLightComponent* EngineLightL;
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|FX") UPointLightComponent* EngineLightR;
+	// Intensidad con throttle al 100 % (candelas)
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|FX") float EngineLightMaxCandelas = 1500.f;
+
+	// Por debajo de este throttle la llama se apaga
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|FX") float FlameMinThrottle = 0.05f;
+	// Escala con el throttle mínimo y con el máximo. X = largo; Y, Z = grosor
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|FX") FVector FlameIdleScale = FVector(0.3f, 0.7f, 0.7f);
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|FX") FVector FlameMaxScale  = FVector(1.f, 1.f, 1.f);
+	// Cuánto "respira" la llama (0 = fija)
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|FX") float FlameFlicker = 0.06f;
 	UPROPERTY(VisibleAnywhere) UILSComponent* ILS;
 	UPROPERTY(VisibleAnywhere) ULandingScoreComponent* LandingScore;
 	UPROPERTY(VisibleAnywhere, Category="Aircraft") USceneComponent* MainGearContact;
@@ -130,6 +159,11 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* PitchAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* RollAction;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* ThrottleAction;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* GearAction;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Flight|Gear") float GearTransitSeconds = 4.f;
+	UPROPERTY(EditDefaultsOnly, Category="Flight|Gear") bool bStartGearDown = false;
 	UPROPERTY(EditDefaultsOnly, Category="Input") UInputAction* PauseAction;
 
 	UPROPERTY(EditAnywhere, Category="Flight|Ground") float BrakeDecelMS2 = 4.f;
@@ -161,7 +195,12 @@ private:
 	float Throttle = 0.6f;
 	 float ThrottleTarget = 0.6f; 
 	float PitchInput = 0.f, RollInput = 0.f;
-
+	
+	bool bGearCommandDown = false;   
+	float GearExtension = 0.f;       
+	void UpdateGear(float DeltaTime);
+	void UpdateEngineFlames();
+	
 	void ApplyFlightForces(float DeltaTime);
 	void ApplyRotationInput(float DeltaTime);
 	void ApplyGroundRoll(float DeltaTime);
@@ -171,6 +210,7 @@ private:
 	void OnRoll(const FInputActionValue& Value);
 	void OnThrottle(const FInputActionValue& Value);
 	void OnPause();
+	void OnGear();
 	
 	// --- Debug / telemetría interna ---
 	float DebugAoA = 0.f;

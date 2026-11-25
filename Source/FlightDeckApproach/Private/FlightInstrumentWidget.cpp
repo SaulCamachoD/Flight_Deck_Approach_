@@ -234,4 +234,18 @@ void UFlightInstrumentWidget::NativeTick(const FGeometry& MyGeometry, float InDe
 			: ESlateVisibility::Hidden);
 	}
 	
+	// --- Tren ---
+	if (GearText)
+	{
+		const bool bDown = Aircraft->IsGearDown();
+		const bool bWarn = !bDown
+			&& Aircraft->State == EAircraftState::Airborne
+			&& Aircraft->GetAltitudeFeet() < GearWarnAltFt;
+		const bool bBlink = FMath::Fmod(GetWorld()->GetTimeSeconds(), 0.6f) < 0.4f;
+
+		GearText->SetText(FText::FromString(
+			bDown ? TEXT("GEAR DOWN") : Aircraft->IsGearMoving() ? TEXT("GEAR TRANSIT") : TEXT("GEAR UP")));
+		GearText->SetColorAndOpacity(bDown ? HudGreen : bWarn ? HudRed : HudAmber);
+		GearText->SetVisibility(!bWarn || bBlink ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden);
+	}
 }

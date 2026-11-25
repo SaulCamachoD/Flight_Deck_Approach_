@@ -58,6 +58,7 @@ FString ULandingReportWidget::CrashReasonToString(ECrashReason Reason)
 	case ECrashReason::RunwayExcursion: return TEXT("RUNWAY EXCURSION");
 	case ECrashReason::Collision:       return TEXT("TERRAIN COLLISION");
 	case ECrashReason::OutOfBounds:     return TEXT("LEFT APPROACH AREA");	
+	case ECrashReason::GearUp:          return TEXT("GEAR UP LANDING");
 	default:                            return TEXT("CRASH");
 		
 	}

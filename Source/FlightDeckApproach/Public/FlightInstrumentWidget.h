@@ -47,7 +47,7 @@ protected:
 	// --- VSI y avisos ---
 	UPROPERTY(meta=(BindWidgetOptional)) class UImage* VSIBar;
 	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* SinkRateText;
-
+	UPROPERTY(meta=(BindWidgetOptional)) UTextBlock* GearText;   
 	// --- Cintas ---
 	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* SpeedTape;
 	UPROPERTY(meta=(BindWidgetOptional)) class UTapeWidget* AltitudeTape;
@@ -72,6 +72,7 @@ protected:
 	// Aviso si desciendes más rápido que esto por debajo de SinkRateMaxAltFt
 	UPROPERTY(EditAnywhere, Category="HUD|Warnings") float SinkRateWarnFPM = 1000.f;
 	UPROPERTY(EditAnywhere, Category="HUD|Warnings") float SinkRateMaxAltFt = 2000.f;
+	UPROPERTY(EditAnywhere, Category="HUD|Warnings") float GearWarnAltFt = 1500.f;
 	
 	
 	

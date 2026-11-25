@@ -19,6 +19,8 @@
 #include "Blueprint/UserWidget.h"
 #include "FDAGameMode.h"
 #include "ILSTransmitter.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Components/PointLightComponent.h"
 
 // Sets default values
 AAircraftPawn::AAircraftPawn()
@@ -33,6 +35,24 @@ AAircraftPawn::AAircraftPawn()
     AirframeMesh->SetupAttachment(Root);
     AirframeMesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     AirframeMesh->SetCollisionResponseToAllChannels(ECR_Block);
+    EngineFlameL = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("EngineFlameL"));
+    EngineFlameL->SetupAttachment(AirframeMesh, TEXT("lf_thruster_jnt"));
+
+    EngineFlameR = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("EngineFlameR"));
+    EngineFlameR->SetupAttachment(AirframeMesh, TEXT("rt_thruster_jnt"));
+    
+    auto MakeEngineLight = [this](FName Name, FName Bone)
+    {
+        UPointLightComponent* Light = CreateDefaultSubobject<UPointLightComponent>(Name);
+        Light->SetupAttachment(AirframeMesh, Bone);
+        Light->SetIntensityUnits(ELightUnits::Candelas);
+        Light->SetLightColor(FLinearColor(0.35f, 0.5f, 1.f));   // azul de postcombustión
+        Light->SetAttenuationRadius(800.f);
+        Light->SetCastShadows(false);                           // barato
+        return Light;
+    };
+    EngineLightL = MakeEngineLight(TEXT("EngineLightL"), TEXT("lf_thruster_jnt"));
+    EngineLightR = MakeEngineLight(TEXT("EngineLightR"), TEXT("rt_thruster_jnt"));
     
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(Root);        // ← al Root, no al mesh
@@ -80,7 +100,8 @@ void AAircraftPawn::BeginPlay()
     {
         Velocity += Wind->GetWindVelocity();
     }
-    
+    bGearCommandDown = bStartGearDown;
+    GearExtension = bStartGearDown ? 1.f : 0.f;
     ThrottleTarget = Throttle;
     
     SetupForController();
@@ -145,7 +166,7 @@ bool AAircraftPawn::IsRunway(const FHitResult& Hit) const
 void AAircraftPawn::HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset)
 {
     SetActorLocation(Hit.Location - GearOffset);
-
+    if (!IsGearDown()) { Crash(ECrashReason::GearUp); return; }
     FTouchdownData Data;
     Data.VerticalSpeedFPM = GetVerticalSpeedFPM();
     Data.RollDeg          = GetRollDeg();
@@ -395,10 +416,52 @@ void AAircraftPawn::OnPause()
     }
 }
 
+
+void AAircraftPawn::OnGear()
+{
+    if (State != EAircraftState::Airborne) return;   // en tierra no se sube el tren
+    bGearCommandDown = !bGearCommandDown;
+}
+
+void AAircraftPawn::UpdateGear(float DeltaTime)
+{
+    const float Target = bGearCommandDown ? 1.f : 0.f;
+    GearExtension = FMath::FInterpConstantTo(GearExtension, Target, DeltaTime, 1.f / FMath::Max(GearTransitSeconds, 0.1f));
+}
+
+void AAircraftPawn::UpdateEngineFlames()
+{
+    const bool bOn = State != EAircraftState::Crashed && Throttle > FlameMinThrottle;
+
+    // 0 en el throttle mínimo, 1 al máximo
+    const float T = FMath::GetMappedRangeValueClamped(FVector2D(FlameMinThrottle, 1.f), FVector2D(0.f, 1.f), Throttle);
+    // Ruido suave para que la llama no se vea congelada
+    const float Flicker = 1.f + FlameFlicker * FMath::PerlinNoise1D(GetWorld()->GetTimeSeconds() * 12.f);
+    const FVector Scale = FMath::Lerp(FlameIdleScale, FlameMaxScale, T) * Flicker;
+
+    for (UParticleSystemComponent* Flame : { EngineFlameL, EngineFlameR })
+    {
+        if (!Flame) continue;
+
+        // Ocultar en vez de desactivar: los conos de malla se crean una sola vez
+        // y no vuelven a aparecer si el sistema se reinicia
+        Flame->SetVisibility(bOn);
+        Flame->SetRelativeScale3D(Scale);
+    }
+    
+    // Con 20 % de luz en ralentí, 100 % al máximo, y apagada si no hay llama
+    const float LightCd = bOn ? EngineLightMaxCandelas * FMath::Lerp(0.2f, 1.f, T) * Flicker : 0.f;
+    for (UPointLightComponent* Light : { EngineLightL, EngineLightR })
+    {
+        if (Light) Light->SetIntensity(LightCd);
+    }
+}
+
 void AAircraftPawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-    
+    UpdateGear(DeltaTime);
+    UpdateEngineFlames();
     Throttle = FMath::FInterpConstantTo(Throttle, ThrottleTarget, DeltaTime, ThrottleResponse);
     switch (State)
     {
@@ -475,6 +538,11 @@ void AAircraftPawn::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
         if (PauseAction)
         {
             EIC->BindAction(PauseAction, ETriggerEvent::Started, this, &AAircraftPawn::OnPause);
+        }
+        
+        if (GearAction)
+        {
+            EIC->BindAction(GearAction, ETriggerEvent::Started, this, &AAircraftPawn::OnGear);
         }
     }
 
