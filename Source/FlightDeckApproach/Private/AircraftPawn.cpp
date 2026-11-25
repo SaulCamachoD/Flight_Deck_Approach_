@@ -53,7 +53,16 @@ AAircraftPawn::AAircraftPawn()
     };
     EngineLightL = MakeEngineLight(TEXT("EngineLightL"), TEXT("lf_thruster_jnt"));
     EngineLightR = MakeEngineLight(TEXT("EngineLightR"), TEXT("rt_thruster_jnt"));
-    
+    WreckMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WreckMesh"));
+    WreckMesh->SetupAttachment(Root);
+    WreckMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    WreckMesh->SetHiddenInGame(true);
+
+    WreckFire = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("WreckFire"));
+    WreckFire->SetupAttachment(WreckMesh);
+    WreckFire->bAutoActivate = false;   // solo al chocar
+    WreckFire->SetUsingAbsoluteRotation(true);   // el humo sube recto aunque los restos estén inclinados
+   
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(Root);        // ← al Root, no al mesh
     SpringArm->TargetArmLength = 1200.f;
@@ -86,7 +95,10 @@ void AAircraftPawn::SetInstrumentsVisible(bool bVisible)
 void AAircraftPawn::BeginPlay()
 {
 	Super::BeginPlay();
-    
+    // Estado inicial seguro: avión intacto, sin restos ni fuego
+    AirframeMesh->SetHiddenInGame(false, true);
+    WreckMesh->SetHiddenInGame(true);
+    WreckFire->Deactivate();
     // Arranca sobre la senda: la velocidad baja a -3° y la nariz queda 0.8° por encima (AoA de equilibrio)
     FRotator StartRot = GetActorRotation();
     StartRot.Pitch = StartPitchDeg;
@@ -197,7 +209,40 @@ void AAircraftPawn::Crash(ECrashReason Reason)
 
     UE_LOG(LogTemp, Error, TEXT("CRASH — %s"), *UEnum::GetValueAsString(Reason));
     OnCrash.Broadcast(Reason);
+    
+    if (Reason != ECrashReason::OutOfBounds)
+    {
+        ShowWreck();
+    }
 
+}
+
+void AAircraftPawn::ShowWreck()
+{
+    // Conservar parte del ángulo del impacto, sin pasar de WreckMaxTiltDeg
+    const FRotator Impact = GetActorRotation();
+    const float Pitch = FMath::Clamp(Impact.Pitch * WreckKeepAngle, -WreckMaxTiltDeg, WreckMaxTiltDeg);
+    const float Roll  = FMath::Clamp(Impact.Roll  * WreckKeepAngle, -WreckMaxTiltDeg, WreckMaxTiltDeg);
+    SetActorRotation(FRotator(Pitch, Impact.Yaw, Roll));
+
+    // Bajar el origen del actor hasta el suelo (en el BP los restos tocan Z = 0)
+    if (bWreckSnapToGround)
+    {
+        FCollisionQueryParams Params;
+        Params.AddIgnoredActor(this);
+        FHitResult Hit;
+        const FVector Start = GetActorLocation() + FVector(0.f, 0.f, 500.f);
+        const FVector End   = GetActorLocation() - FVector(0.f, 0.f, 5000.f);
+        if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_WorldStatic, Params))
+        {
+            SetActorLocation(Hit.Location);
+        }
+    }
+
+    AirframeMesh->SetHiddenInGame(true, true);   // true, true = también sus hijos (llamas y luces)
+    WreckMesh->SetHiddenInGame(false);
+    WreckFire->SetWorldRotation(FRotator::ZeroRotator);   // humo y fuego siempre hacia arriba
+    WreckFire->Activate(true);
 }
 
 void AAircraftPawn::CheckStillOnRunway()

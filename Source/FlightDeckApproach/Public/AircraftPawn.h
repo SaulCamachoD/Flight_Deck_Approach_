@@ -118,6 +118,20 @@ protected:
 	// Luz de cada tobera: se ve desde atrás, donde la llama queda de canto
 	UPROPERTY(VisibleAnywhere, Category="Aircraft|FX") UPointLightComponent* EngineLightL;
 	UPROPERTY(VisibleAnywhere, Category="Aircraft|FX") UPointLightComponent* EngineLightR;
+	
+	// --- Choque ---
+	// Malla destruida: oculta hasta el choque
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|Crash") UStaticMeshComponent* WreckMesh;
+	// Fuego y humo sobre los restos
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|Crash") UParticleSystemComponent* WreckFire;
+	// Cuánto del ángulo del impacto conservan los restos (0 = plano, 1 = igual que chocó)
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Crash", meta=(ClampMin="0", ClampMax="1")) float WreckKeepAngle = 0.3f;
+	// Inclinación máxima de los restos, para que no se entierren
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Crash") float WreckMaxTiltDeg = 15.f;
+	// true = bajar los restos hasta el suelo (ideal si quedan planos)
+	// false = dejarlos justo donde chocó (ideal con el ángulo completo)
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Crash") bool bWreckSnapToGround = false;
+	
 	// Intensidad con throttle al 100 % (candelas)
 	UPROPERTY(EditDefaultsOnly, Category="Aircraft|FX") float EngineLightMaxCandelas = 1500.f;
 
@@ -200,6 +214,7 @@ private:
 	float GearExtension = 0.f;       
 	void UpdateGear(float DeltaTime);
 	void UpdateEngineFlames();
+	void ShowWreck();
 	
 	void ApplyFlightForces(float DeltaTime);
 	void ApplyRotationInput(float DeltaTime);
