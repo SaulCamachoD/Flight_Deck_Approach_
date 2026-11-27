@@ -37,7 +37,8 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="!bRandomWind")) float FixedWindFromDeg = 270.f;
 	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="!bRandomWind")) float FixedWindKt = 10.f;
 	UPROPERTY(EditDefaultsOnly, Category="Wind", meta=(EditCondition="!bRandomWind")) float FixedGustKt = 0.f;
-
+	// En RANDOM llueve si la ráfaga sorteada es al menos esta
+	UPROPERTY(EditDefaultsOnly, Category="Wind") float RandomRainGustKt = 5.f;
 	// Nombre del nivel del menú (ej. MainMenu). Vacío = el botón hace Retry
 	UPROPERTY(EditDefaultsOnly, Category="Flow") FName MainMenuLevelName;
 

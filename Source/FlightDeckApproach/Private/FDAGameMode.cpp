@@ -77,8 +77,9 @@ void AFDAGameMode::ConfigureWind()
 	{
 		RunwayYaw = T->GetActorRotation().Yaw;
 	}
-
-	switch (UFDASaveGame::LoadWindPreset())
+	
+	const EWindPreset Preset = UFDASaveGame::LoadWindPreset();
+	switch (Preset)
 	{
 	case EWindPreset::Calm:
 		Wind->SetWind(RunwayYaw, 0.f, 0.f);
@@ -104,9 +105,14 @@ void AFDAGameMode::ConfigureWind()
 		{
 			Wind->SetWind(FixedWindFromDeg, FixedWindKt, FixedGustKt);
 		}
+		
 		break;
+		
 	}
-
+	// GUSTY siempre llueve; RANDOM solo con ráfagas fuertes
+	Wind->SetRain(Preset == EWindPreset::Gusty
+		|| (Preset == EWindPreset::Random && Wind->GetGustKt() >= RandomRainGustKt));
+	
 	UE_LOG(LogTemp, Warning, TEXT("WIND %03.0f / %.0f KT  gust +%.0f"),
 		FRotator::ClampAxis(Wind->GetBaseFromDeg()), Wind->GetBaseSpeedKt(), Wind->GetGustKt());
 	

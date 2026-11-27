@@ -21,6 +21,8 @@
 #include "ILSTransmitter.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/AudioComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AAircraftPawn::AAircraftPawn()
@@ -63,6 +65,17 @@ AAircraftPawn::AAircraftPawn()
     WreckFire->bAutoActivate = false;   // solo al chocar
     WreckFire->SetUsingAbsoluteRotation(true);   // el humo sube recto aunque los restos estén inclinados
    
+    auto MakeAudio = [this, Root](FName Name)
+    {
+        UAudioComponent* Audio = CreateDefaultSubobject<UAudioComponent>(Name);
+        Audio->SetupAttachment(Root);
+        Audio->bAutoActivate = false;   // arrancan en BeginPlay
+        return Audio;
+    };
+    EngineAudio = MakeAudio(TEXT("EngineAudio"));
+    WindAudio   = MakeAudio(TEXT("WindAudio"));
+    RainAudio   = MakeAudio(TEXT("RainAudio"));
+    
     SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));
     SpringArm->SetupAttachment(Root);        // ← al Root, no al mesh
     SpringArm->TargetArmLength = 1200.f;
@@ -115,6 +128,15 @@ void AAircraftPawn::BeginPlay()
     bGearCommandDown = bStartGearDown;
     GearExtension = bStartGearDown ? 1.f : 0.f;
     ThrottleTarget = Throttle;
+    
+    // --- Audio ---
+    EngineAudio->Play();
+    WindAudio->SetVolumeMultiplier(0.f);   // UpdateAudio lo sube según el viento
+    WindAudio->Play();
+    if (const UWindSubsystem* Weather = GetWorld()->GetSubsystem<UWindSubsystem>(); Weather && Weather->IsRaining())
+    {
+        RainAudio->FadeIn(2.f, RainVolume);
+    }
     
     SetupForController();
 	
@@ -206,6 +228,7 @@ void AAircraftPawn::Crash(ECrashReason Reason)
     State = EAircraftState::Crashed;
     Velocity = FVector::ZeroVector;
     Throttle = ThrottleTarget = 0.f;
+    EngineAudio->FadeOut(0.3f, 0.f);   
 
     UE_LOG(LogTemp, Error, TEXT("CRASH — %s"), *UEnum::GetValueAsString(Reason));
     OnCrash.Broadcast(Reason);
@@ -243,6 +266,27 @@ void AAircraftPawn::ShowWreck()
     WreckMesh->SetHiddenInGame(false);
     WreckFire->SetWorldRotation(FRotator::ZeroRotator);   // humo y fuego siempre hacia arriba
     WreckFire->Activate(true);
+    
+    if (CrashSound)
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, CrashSound, GetActorLocation());
+    }
+}
+
+void AAircraftPawn::UpdateAudio()
+{
+    if (State == EAircraftState::Crashed) return;   // Crash() ya apagó el motor; el viento se queda
+
+    EngineAudio->SetVolumeMultiplier(FMath::Lerp(EngineVolumeRange.X, EngineVolumeRange.Y, Throttle));
+    EngineAudio->SetPitchMultiplier(FMath::Lerp(EnginePitchRange.X, EnginePitchRange.Y, Throttle));
+
+    if (const UWindSubsystem* Wind = GetWorld()->GetSubsystem<UWindSubsystem>())
+    {
+        // GetSpeedKt incluye la ráfaga del momento: el viento "sopla" en el audio
+        const float Strength = FMath::GetMappedRangeValueClamped(WindAudioKtRange, FVector2D(0.f, 1.f), Wind->GetSpeedKt());
+        WindAudio->SetVolumeMultiplier(Strength);
+        WindAudio->SetPitchMultiplier(FMath::Lerp(0.9f, 1.1f, Strength));
+    }
 }
 
 void AAircraftPawn::CheckStillOnRunway()
@@ -507,6 +551,7 @@ void AAircraftPawn::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
     UpdateGear(DeltaTime);
     UpdateEngineFlames();
+    UpdateAudio();
     Throttle = FMath::FInterpConstantTo(Throttle, ThrottleTarget, DeltaTime, ThrottleResponse);
     switch (State)
     {

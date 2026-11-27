@@ -54,6 +54,8 @@ class USkeletalMeshComponent;
 class UILSComponent;
 class UParticleSystemComponent;
 class UPointLightComponent;
+class UAudioComponent;
+class USoundBase;
 
 UCLASS()
 class FLIGHTDECKAPPROACH_API AAircraftPawn : public APawn
@@ -197,6 +199,19 @@ protected:
 	
 	UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<class UFlightInstrumentWidget> InstrumentsWidgetClass;
 	
+	// --- Audio ---
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|Audio") UAudioComponent* EngineAudio;
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|Audio") UAudioComponent* WindAudio;
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|Audio") UAudioComponent* RainAudio;
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Audio") USoundBase* CrashSound;
+
+	// Volumen y tono del motor con throttle 0 (X) y 100 % (Y)
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Audio") FVector2D EngineVolumeRange = FVector2D(0.35f, 1.f);
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Audio") FVector2D EnginePitchRange  = FVector2D(0.85f, 1.15f);
+	// Viento: en silencio hasta X kt, volumen completo en Y kt
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Audio") FVector2D WindAudioKtRange = FVector2D(8.f, 25.f);
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Audio") float RainVolume = 0.7f;
+	
 	bool IsRunway(const FHitResult& Hit) const;
 	void HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset);
 	void Crash(ECrashReason Reason);
@@ -215,6 +230,7 @@ private:
 	void UpdateGear(float DeltaTime);
 	void UpdateEngineFlames();
 	void ShowWreck();
+	void UpdateAudio();
 	
 	void ApplyFlightForces(float DeltaTime);
 	void ApplyRotationInput(float DeltaTime);

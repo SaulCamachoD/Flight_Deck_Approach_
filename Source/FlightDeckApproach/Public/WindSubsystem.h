@@ -32,6 +32,9 @@ public:
 	UFUNCTION(BlueprintPure, Category="Wind") float GetBaseFromDeg() const { return BaseFromDeg; }
 	UFUNCTION(BlueprintPure, Category="Wind") float GetBaseSpeedKt() const { return BaseSpeedKt; }
 	UFUNCTION(BlueprintPure, Category="Wind") float GetGustKt() const { return GustKt; }
+	// Lluvia: la decide el GameMode según el preset; la usan el audio y la lluvia visual
+	UFUNCTION(BlueprintCallable, Category="Weather") void SetRain(bool bInRain) { bRain = bInRain; }
+	UFUNCTION(BlueprintPure, Category="Weather") bool IsRaining() const { return bRain; }
 
 private:
 	void UpdateCurrent();
@@ -46,4 +49,5 @@ private:
 
 	float Time = 0.f;
 	float Seed = 0.f;
+	bool bRain = false;
 };

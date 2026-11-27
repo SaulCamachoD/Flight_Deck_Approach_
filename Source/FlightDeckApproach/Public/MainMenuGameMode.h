@@ -19,4 +19,7 @@ protected:
 	virtual void BeginPlay() override;
 
 	UPROPERTY(EditDefaultsOnly, Category="UI") TSubclassOf<UUserWidget> MenuWidgetClass;
+	UPROPERTY(EditDefaultsOnly, Category="Audio") class USoundBase* MenuMusic;
+	UPROPERTY(EditDefaultsOnly, Category="Audio") float MusicFadeInSeconds = 2.f;
+	
 };
