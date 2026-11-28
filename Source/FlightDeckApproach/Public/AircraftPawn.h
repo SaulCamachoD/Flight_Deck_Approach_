@@ -56,6 +56,7 @@ class UParticleSystemComponent;
 class UPointLightComponent;
 class UAudioComponent;
 class USoundBase;
+class UNiagaraComponent;
 
 UCLASS()
 class FLIGHTDECKAPPROACH_API AAircraftPawn : public APawn
@@ -212,6 +213,16 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Audio") FVector2D WindAudioKtRange = FVector2D(8.f, 25.f);
 	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Audio") float RainVolume = 0.7f;
 	
+	// --- Clima visual ---
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|Weather") UNiagaraComponent* RainFX;
+	UPROPERTY(VisibleAnywhere, Category="Aircraft|Weather") UNiagaraComponent* WindFX;
+
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Weather") float RainSpawnRate = 3000.f;     // gotas por segundo
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Weather") float RainFallSpeed = 900.f;      // cm/s hacia abajo
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Weather") float MaxStreakSpawnRate = 150.f; // estelas por segundo con viento fuerte
+	// Estelas: ninguna hasta X kt, todas en Y kt
+	UPROPERTY(EditDefaultsOnly, Category="Aircraft|Weather") FVector2D WindFXKtRange = FVector2D(8.f, 25.f);
+	
 	bool IsRunway(const FHitResult& Hit) const;
 	void HandleTouchdown(const FHitResult& Hit, const FVector& GearOffset);
 	void Crash(ECrashReason Reason);
@@ -231,6 +242,7 @@ private:
 	void UpdateEngineFlames();
 	void ShowWreck();
 	void UpdateAudio();
+	void UpdateWeatherFX();
 	
 	void ApplyFlightForces(float DeltaTime);
 	void ApplyRotationInput(float DeltaTime);

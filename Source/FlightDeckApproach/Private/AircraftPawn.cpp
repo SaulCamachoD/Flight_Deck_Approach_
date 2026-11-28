@@ -23,6 +23,7 @@
 #include "Components/PointLightComponent.h"
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "NiagaraComponent.h"
 
 // Sets default values
 AAircraftPawn::AAircraftPawn()
@@ -84,9 +85,15 @@ AAircraftPawn::AAircraftPawn()
     SpringArm->CameraLagSpeed = 8.f;
     SpringArm->bInheritRoll = false;
     SpringArm->bDoCollisionTest = false;
-
+    
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm);
+    
+    // Lluvia y estelas viven alrededor de la cámara (Local Space en el Niagara)
+    RainFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("RainFX"));
+    RainFX->SetupAttachment(Camera);
+    WindFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("WindFX"));
+    WindFX->SetupAttachment(Camera);
     
     ILS = CreateDefaultSubobject<UILSComponent>(TEXT("ILS"));
     LandingScore = CreateDefaultSubobject<ULandingScoreComponent>(TEXT("LandingScore"));
@@ -287,6 +294,27 @@ void AAircraftPawn::UpdateAudio()
         WindAudio->SetVolumeMultiplier(Strength);
         WindAudio->SetPitchMultiplier(FMath::Lerp(0.9f, 1.1f, Strength));
     }
+}
+
+void AAircraftPawn::UpdateWeatherFX()
+{
+    const UWindSubsystem* Weather = GetWorld()->GetSubsystem<UWindSubsystem>();
+    if (!Weather) return;
+
+    // Cómo se mueve el aire visto desde la cámara: el viento menos lo que avanzamos
+    const FVector AirRel = Weather->GetWindVelocity() - Velocity;
+    const FTransform& CamXform = Camera->GetComponentTransform();
+
+    // Lluvia: el aire relativo más la caída, pasado al espacio de la cámara
+    RainFX->SetVariableFloat(TEXT("SpawnRate"), Weather->IsRaining() ? RainSpawnRate : 0.f);
+    RainFX->SetVariableVec3(TEXT("RelVelocity"),
+        CamXform.InverseTransformVectorNoScale(AirRel + FVector(0.f, 0.f, -RainFallSpeed)));
+
+    // Estelas: más cuanto más fuerte el viento (ráfaga incluida); ninguna con el avión estrellado
+    const float Strength = (State == EAircraftState::Crashed) ? 0.f
+        : FMath::GetMappedRangeValueClamped(WindFXKtRange, FVector2D(0.f, 1.f), Weather->GetSpeedKt());
+    WindFX->SetVariableFloat(TEXT("SpawnRate"), MaxStreakSpawnRate * Strength);
+    WindFX->SetVariableVec3(TEXT("RelVelocity"), CamXform.InverseTransformVectorNoScale(AirRel));
 }
 
 void AAircraftPawn::CheckStillOnRunway()
@@ -552,6 +580,7 @@ void AAircraftPawn::Tick(float DeltaTime)
     UpdateGear(DeltaTime);
     UpdateEngineFlames();
     UpdateAudio();
+    UpdateWeatherFX();
     Throttle = FMath::FInterpConstantTo(Throttle, ThrottleTarget, DeltaTime, ThrottleResponse);
     switch (State)
     {
